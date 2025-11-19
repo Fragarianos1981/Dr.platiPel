@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center">
+    <div class="card">
+        <div class="card-body">
+            <img src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif" alt="Angry baby" style="max-width:300px">
+            <h1 class="display-4 text-danger">403</h1>
+            <h3>Απαγορευμένη Πρόσβαση!</h3>
+            <p class="lead">Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.</p>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Πίσω στην Αρχική</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

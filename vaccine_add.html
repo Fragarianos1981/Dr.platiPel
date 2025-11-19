@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Καταχώρηση Εμβολίου - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-shield-plus"></i>
+                        Καταχώρηση Εμβολίου
+                    </h2>
+                    {% if patient %}
+                    <p class="text-muted mb-0">
+                        Ασθενής: <strong>{{ patient.full_name }}</strong> ({{ patient.amka }})
+                    </p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.vaccine_list') }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Πίσω
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-shield-plus"></i>
+                        Στοιχεία Εμβολίου
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="vaccineForm" method="POST" action="{{ url_for('main.vaccine_add') }}">
+                        {{ csrf_token() }}
+                        
+                        <!-- Patient Selection (if not pre-selected) -->
+                        {% if not patient %}
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label required">Ασθενής</label>
+                            <select class="form-select" id="patient_id" name="patient_id" required>
+                                <option value="">Επιλέξτε ασθενή...</option>
+                                {% for p in patients %}
+                                <option value="{{ p.id }}">{{ p.full_name }} ({{ p.amka }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                        {% endif %}
+
+                        <!-- Visit Selection (optional) -->
+                        {% if visit %}
+                        <input type="hidden" name="visit_id" value="{{ visit.id }}">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Το εμβόλιο θα συνδεθεί με την επίσκεψη της {{ visit.visit_date_display }}
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Basic Vaccine Info -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="vaccine_name" class="form-label required">Όνομα Εμβολίου</label>
+                                    <input type="text" class="form-control" id="vaccine_name" name="vaccine_name" 
+                                           placeholder="π.χ. Εξαδύναμο" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="vaccine_type" class="form-label">Τύπος Εμβολίου</label>
+                                    <select class="form-select" id="vaccine_type" name="vaccine_type">
+                                        <option value="">Επιλέξτε τύπο...</option>
+                                        <option value="Hexavalent">Εξαδύναμο</option>
+                                        <option value="Pneumococcal">Πνευμονιόκοκκος</option>
+                                        <option value="Rotavirus">Ροτάιός</option>
+                                        <option value="MMR">MMR</option>
+                                        <option value="DTPa">DTPa</option>
+                                        <option value="Tdap">Tdap</option>
+                                        <option value="HPV">HPV</option>
+                                        <option value="Influenza">Γρίπη</option>
+                                        <option value="Other">Άλλο</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="manufacturer" class="form-label">Κατασκευαστής</label>
+                                    <input type="text" class="form-control" id="manufacturer" name="manufacturer" 
+                                           placeholder="π.χ. GSK, Sanofi Pasteur">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="batch_number" class="form-label">Αριθμός Παρτίδας</label>
+                                    <input type="text" class="form-control" id="batch_number" name="batch_number">
+                                </div>
+                            </div>
+
+                            <!-- Administration Details -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date_administered" class="form-label required">Ημερομηνία Χορήγησης</label>
+                                    <input type="datetime-local" class="form-control" id="date_administered" 
+                                           name="date_administered" value="{{ current_datetime }}" required>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label for="dose_number" class="form-label">Αριθμός Δόσης</label>
+                                            <select class="form-select" id="dose_number" name="dose_number">
+                                                <option value="">-</option>
+                                                <option value="1">1η Δόση</option>
+                                                <option value="2">2η Δόση</option>
+                                                <option value="3">3η Δόση</option>
+                                                <option value="4">4η Δόση</option>
+                                                <option value="5">5η Δόση</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-3">
+                                            <label for="dose_amount" class="form-label">Ποσότητα</label>
+                                            <input type="text" class="form-control" id="dose_amount" name="dose_amount" 
+                                                   placeholder="π.χ. 0.5ml">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="administration_site" class="form-label">Σημείο Χορήγησης</label>
+                                    <select class="form-select" id="administration_site" name="administration_site">
+                                        <option value="">Επιλέξτε σημείο...</option>
+                                        <option value="Δεξιός βραχίονας">Δεξιός βραχίονας</option>
+                                        <option value="Αριστερός βραχίονας">Αριστερός βραχίονας</option>
+                                        <option value="Δεξιός μηρός">Δεξιός μηρός</option>
+                                        <option value="Αριστερός μηρός">Αριστερός μηρός</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="administration_route" class="form-label">Τρόπος Χορήγησης</label>
+                                    <select class="form-select" id="administration_route" name="administration_route">
+                                        <option value="Ενδομυϊκή">Ενδομυϊκή</option>
+                                        <option value="Υποδόρια">Υποδόρια</option>
+                                        <option value="Ενδοδερμική">Ενδοδερμική</option>
+                                        <option value="Από το στόμα">Από το στόμα</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expiry_date" class="form-label">Ημερομηνία Λήξης</label>
+                                    <input type="date" class="form-control" id="expiry_date" name="expiry_date">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="next_dose_due" class="form-label">Επόμενη Δόση</label>
+                                    <input type="date" class="form-control" id="next_dose_due" name="next_dose_due">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="adverse_reactions" class="form-label">Παρενέργειες/Αντιδράσεις</label>
+                                    <textarea class="form-control" id="adverse_reactions" name="adverse_reactions" 
+                                              rows="3" placeholder="Καταγράψτε τυχόν παρενέργειες..."></textarea>
+                                </div>
+
+                                {% if adverse_reactions %}
+                                <div class="mb-3">
+                                    <label for="reaction_severity" class="form-label">Σοβαρότητα Αντίδρασης</label>
+                                    <select class="form-select" id="reaction_severity" name="reaction_severity">
+                                        <option value="">Επιλέξτε...</option>
+                                        <option value="mild">Ήπια</option>
+                                        <option value="moderate">Μέτρια</option>
+                                        <option value="severe">Σοβαρή</option>
+                                    </select>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Σημειώσεις</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Επιπλέον σημειώσεις..."></textarea>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.vaccine_list') }}" 
+                                       class="btn btn-secondary">
+                                        <i class="bi bi-x-circle"></i> Ακύρωση
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-shield-check"></i> Καταχώρηση Εμβολίου
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide reaction severity based on adverse reactions
+document.getElementById('adverse_reactions').addEventListener('input', function() {
+    const reactionSeverityGroup = document.querySelector('[for="reaction_severity"]').parentNode;
+    if (this.value.trim()) {
+        reactionSeverityGroup.style.display = 'block';
+    } else {
+        reactionSeverityGroup.style.display = 'none';
+    }
+});
+
+// Auto-calculate next dose due based on vaccine type and dose number
+document.getElementById('vaccine_type').addEventListener('change', function() {
+    const doseNumber = document.getElementById('dose_number').value;
+    if (this.value && doseNumber) {
+        calculateNextDose(this.value, parseInt(doseNumber));
+    }
+});
+
+document.getElementById('dose_number').addEventListener('change', function() {
+    const vaccineType = document.getElementById('vaccine_type').value;
+    if (vaccineType && this.value) {
+        calculateNextDose(vaccineType, parseInt(this.value));
+    }
+});
+
+function calculateNextDose(vaccineType, doseNumber) {
+    const intervals = {
+        'Hexavalent': [2, 2, 9], // months between doses
+        'Pneumococcal': [2, 2, 6],
+        'Rotavirus': [2, 2],
+        'MMR': [36],
+        'HPV': [2, 4]
+    };
+    
+    if (intervals[vaccineType] && intervals[vaccineType][doseNumber - 1]) {
+        const currentDate = new Date(document.getElementById('date_administered').value);
+        const monthsToAdd = intervals[vaccineType][doseNumber - 1];
+        currentDate.setMonth(currentDate.getMonth() + monthsToAdd);
+        
+        const nextDueInput = document.getElementById('next_dose_due');
+        nextDueInput.value = currentDate.toISOString().split('T')[0];
+    }
+}
+
+// Form validation
+document.getElementById('vaccineForm').addEventListener('submit', function(e) {
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία.');
+    }
+});
+</script>
+{% endblock %}

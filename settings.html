@@ -1,0 +1,766 @@
+{% extends "base.html" %}
+
+{% block title %}Ρυθμίσεις Συστήματος - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-gear"></i>
+                        Ρυθμίσεις Συστήματος
+                    </h2>
+                    <p class="text-muted mb-0">Διαχείριση γενικών ρυθμίσεων και παραμέτρων</p>
+                </div>
+                <div>
+                    {% if current_user.role in ['admin', 'topuser'] %}
+                    <button class="btn btn-warning" onclick="backupDatabase()">
+                        <i class="bi bi-download"></i> Backup
+                    </button>
+                    <button class="btn btn-info" onclick="exportSettings()">
+                        <i class="bi bi-file-export"></i> Εξαγωγή Ρυθμίσεων
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Settings Navigation -->
+        <div class="col-md-3">
+            <div class="list-group">
+                <a href="#general" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                    <i class="bi bi-house"></i> Γενικές Ρυθμίσεις
+                </a>
+                <a href="#clinic" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-building"></i> Στοιχεία Ιατρείου
+                </a>
+                <a href="#billing" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-receipt"></i> Ρυθμίσεις Χρεώσεων
+                </a>
+                <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-shield-lock"></i> Ασφάλεια
+                </a>
+                <a href="#email" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-envelope"></i> Ρυθμίσεις Email
+                </a>
+                <a href="#backup" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-archive"></i> Backup & Restore
+                </a>
+                {% if current_user.role == 'topuser' %}
+                <a href="#advanced" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="bi bi-wrench"></i> Προχωρημένες
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- System Info Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-info-circle"></i> Πληροφορίες Συστήματος
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        <strong>Έκδοση:</strong> Dr. PLATI v1.0.0<br>
+                        <strong>Βάση:</strong> {{ system_info.database_type }}<br>
+                        <strong>Χρήστες:</strong> {{ system_info.total_users }}<br>
+                        <strong>Ασθενείς:</strong> {{ system_info.total_patients }}<br>
+                        <strong>Μέγεθος DB:</strong> {{ system_info.database_size }} MB<br>
+                        <strong>Uptime:</strong> {{ system_info.uptime }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Content -->
+        <div class="col-md-9">
+            <div class="tab-content">
+                <!-- General Settings -->
+                <div class="tab-pane fade show active" id="general">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Γενικές Ρυθμίσεις</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="generalForm" method="POST" action="{{ url_for('main.settings_update', section='general') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="app_name" class="form-label">Όνομα Εφαρμογής</label>
+                                            <input type="text" class="form-control" id="app_name" name="app_name" 
+                                                   value="{{ settings.app_name or 'Dr. PLATI' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="default_language" class="form-label">Προεπιλεγμένη Γλώσσα</label>
+                                            <select class="form-select" id="default_language" name="default_language">
+                                                <option value="el" {{ 'selected' if settings.default_language == 'el' else '' }}>Ελληνικά</option>
+                                                <option value="en" {{ 'selected' if settings.default_language == 'en' else '' }}>English</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="timezone" class="form-label">Ζώνη Ώρας</label>
+                                            <select class="form-select" id="timezone" name="timezone">
+                                                <option value="Europe/Athens" {{ 'selected' if settings.timezone == 'Europe/Athens' else '' }}>Europe/Athens (EET/EEST)</option>
+                                                <option value="UTC" {{ 'selected' if settings.timezone == 'UTC' else '' }}>UTC</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="patients_per_page" class="form-label">Ασθενείς ανά Σελίδα</label>
+                                            <input type="number" class="form-control" id="patients_per_page" name="patients_per_page" 
+                                                   value="{{ settings.patients_per_page or 20 }}" min="10" max="100">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="visit_duration" class="form-label">Διάρκεια Επίσκεψης (λεπτά)</label>
+                                            <input type="number" class="form-control" id="visit_duration" name="visit_duration" 
+                                                   value="{{ settings.visit_duration or 30 }}" min="15" max="120">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="session_timeout" class="form-label">Timeout Session (ώρες)</label>
+                                            <input type="number" class="form-control" id="session_timeout" name="session_timeout" 
+                                                   value="{{ settings.session_timeout or 8 }}" min="1" max="24">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clinic Settings -->
+                <div class="tab-pane fade" id="clinic">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Στοιχεία Ιατρείου</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="clinicForm" method="POST" action="{{ url_for('main.settings_update', section='clinic') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="clinic_name" class="form-label">Όνομα Ιατρείου</label>
+                                            <input type="text" class="form-control" id="clinic_name" name="clinic_name" 
+                                                   value="{{ settings.clinic_name or 'Dr. PLATI' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="clinic_address" class="form-label">Διεύθυνση</label>
+                                            <textarea class="form-control" id="clinic_address" name="clinic_address" rows="3">{{ settings.clinic_address or '' }}</textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="clinic_phone" class="form-label">Τηλέφωνο</label>
+                                            <input type="tel" class="form-control" id="clinic_phone" name="clinic_phone" 
+                                                   value="{{ settings.clinic_phone or '' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="clinic_email" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="clinic_email" name="clinic_email" 
+                                                   value="{{ settings.clinic_email or '' }}">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="clinic_website" class="form-label">Website</label>
+                                            <input type="url" class="form-control" id="clinic_website" name="clinic_website" 
+                                                   value="{{ settings.clinic_website or '' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="tax_id" class="form-label">ΑΦΜ</label>
+                                            <input type="text" class="form-control" id="tax_id" name="tax_id" 
+                                                   value="{{ settings.tax_id or '' }}" pattern="[0-9]{9}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="license_number" class="form-label">Αριθμός Άδειας</label>
+                                            <input type="text" class="form-control" id="license_number" name="license_number" 
+                                                   value="{{ settings.license_number or '' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="emergency_phone" class="form-label">Τηλ. Επείγοντος</label>
+                                            <input type="tel" class="form-control" id="emergency_phone" name="emergency_phone" 
+                                                   value="{{ settings.emergency_phone or '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Billing Settings -->
+                <div class="tab-pane fade" id="billing">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Ρυθμίσεις Χρεώσεων</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="billingForm" method="POST" action="{{ url_for('main.settings_update', section='billing') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="default_vat_rate" class="form-label">Προεπιλεγμένος ΦΠΑ (%)</label>
+                                            <select class="form-select" id="default_vat_rate" name="default_vat_rate">
+                                                <option value="0" {{ 'selected' if settings.default_vat_rate == 0 else '' }}>0% (Απαλλαγή)</option>
+                                                <option value="6" {{ 'selected' if settings.default_vat_rate == 6 else '' }}>6%</option>
+                                                <option value="13" {{ 'selected' if settings.default_vat_rate == 13 else '' }}>13%</option>
+                                                <option value="24" {{ 'selected' if settings.default_vat_rate == 24 else '' }}>24% (Κανονικός)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="invoice_prefix" class="form-label">Πρόθεμα Τιμολογίου</label>
+                                            <input type="text" class="form-control" id="invoice_prefix" name="invoice_prefix" 
+                                                   value="{{ settings.invoice_prefix or 'INV' }}" maxlength="5">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="next_invoice_number" class="form-label">Επόμενος Αριθμός Τιμολογίου</label>
+                                            <input type="number" class="form-control" id="next_invoice_number" name="next_invoice_number" 
+                                                   value="{{ settings.next_invoice_number or 1 }}" min="1">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Τιμές Υπηρεσιών (€)</h6>
+                                        
+                                        <div class="mb-3">
+                                            <label for="price_consultation" class="form-label">Παιδιατρική Επίσκεψη</label>
+                                            <input type="number" class="form-control" id="price_consultation" name="price_consultation" 
+                                                   value="{{ settings.price_consultation or 40 }}" step="0.01" min="0">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="price_vaccination" class="form-label">Εμβολιασμός</label>
+                                            <input type="number" class="form-control" id="price_vaccination" name="price_vaccination" 
+                                                   value="{{ settings.price_vaccination or 25 }}" step="0.01" min="0">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="price_certificate" class="form-label">Βεβαίωση</label>
+                                            <input type="number" class="form-control" id="price_certificate" name="price_certificate" 
+                                                   value="{{ settings.price_certificate or 10 }}" step="0.01" min="0">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="price_emergency" class="form-label">Επείγον Περιστατικό</label>
+                                            <input type="number" class="form-control" id="price_emergency" name="price_emergency" 
+                                                   value="{{ settings.price_emergency or 60 }}" step="0.01" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div class="tab-pane fade" id="security">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Ρυθμίσεις Ασφάλειας</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="securityForm" method="POST" action="{{ url_for('main.settings_update', section='security') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="password_min_length" class="form-label">Ελάχιστο Μήκος Κωδικού</label>
+                                            <input type="number" class="form-control" id="password_min_length" name="password_min_length" 
+                                                   value="{{ settings.password_min_length or 6 }}" min="4" max="20">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="max_login_attempts" class="form-label">Μέγιστες Απόπειρες Σύνδεσης</label>
+                                            <input type="number" class="form-control" id="max_login_attempts" name="max_login_attempts" 
+                                                   value="{{ settings.max_login_attempts or 5 }}" min="3" max="10">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="lockout_duration" class="form-label">Διάρκεια Κλειδώματος (λεπτά)</label>
+                                            <input type="number" class="form-control" id="lockout_duration" name="lockout_duration" 
+                                                   value="{{ settings.lockout_duration or 15 }}" min="5" max="60">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="require_password_change" 
+                                                       name="require_password_change" {{ 'checked' if settings.require_password_change else '' }}>
+                                                <label class="form-check-label" for="require_password_change">
+                                                    Υποχρεωτική Αλλαγή Κωδικού (90 ημέρες)
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="enable_audit_log" 
+                                                       name="enable_audit_log" {{ 'checked' if settings.enable_audit_log else '' }}>
+                                                <label class="form-check-label" for="enable_audit_log">
+                                                    Ενεργοποίηση Audit Log
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="enable_two_factor" 
+                                                       name="enable_two_factor" {{ 'checked' if settings.enable_two_factor else '' }}>
+                                                <label class="form-check-label" for="enable_two_factor">
+                                                    Ενεργοποίηση 2FA (μελλοντικά)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    <strong>Προσοχή:</strong> Η τροποποίηση των ρυθμίσεων ασφάλειας μπορεί να επηρεάσει την πρόσβαση των χρηστών.
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Settings -->
+                <div class="tab-pane fade" id="email">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Ρυθμίσεις Email</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="emailForm" method="POST" action="{{ url_for('main.settings_update', section='email') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtp_server" class="form-label">SMTP Server</label>
+                                            <input type="text" class="form-control" id="smtp_server" name="smtp_server" 
+                                                   value="{{ settings.smtp_server or '' }}" placeholder="smtp.gmail.com">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="smtp_port" class="form-label">SMTP Port</label>
+                                            <input type="number" class="form-control" id="smtp_port" name="smtp_port" 
+                                                   value="{{ settings.smtp_port or 587 }}" min="25" max="995">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="smtp_use_tls" 
+                                                       name="smtp_use_tls" {{ 'checked' if settings.smtp_use_tls else '' }}>
+                                                <label class="form-check-label" for="smtp_use_tls">
+                                                    Χρήση TLS/STARTTLS
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="smtp_username" class="form-label">Username</label>
+                                            <input type="text" class="form-control" id="smtp_username" name="smtp_username" 
+                                                   value="{{ settings.smtp_username or '' }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="smtp_password" class="form-label">Password</label>
+                                            <input type="password" class="form-control" id="smtp_password" name="smtp_password" 
+                                                   placeholder="••••••••">
+                                            <div class="form-text">Αφήστε κενό για να μη γίνει αλλαγή</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="default_sender" class="form-label">Προεπιλεγμένος Αποστολέας</label>
+                                            <input type="email" class="form-control" id="default_sender" name="default_sender" 
+                                                   value="{{ settings.default_sender or '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-outline-primary" onclick="testEmail()">
+                                        <i class="bi bi-envelope-check"></i> Δοκιμή Email
+                                    </button>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup Settings -->
+                <div class="tab-pane fade" id="backup">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Backup & Restore</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if current_user.role in ['admin', 'topuser'] %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Δημιουργία Backup</h6>
+                                    <p class="text-muted">Δημιουργία πλήρους backup της βάσης δεδομένων</p>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="include_files" checked>
+                                            <label class="form-check-label" for="include_files">
+                                                Συμπερίληψη αρχείων
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <button class="btn btn-success" onclick="createBackup()">
+                                        <i class="bi bi-download"></i> Δημιουργία Backup
+                                    </button>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6>Επαναφορά από Backup</h6>
+                                    <p class="text-muted text-danger">
+                                        <strong>ΠΡΟΣΟΧΗ:</strong> Η επαναφορά θα αντικαταστήσει όλα τα δεδομένα!
+                                    </p>
+                                    
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" id="backup_file" accept=".sql,.zip">
+                                    </div>
+                                    
+                                    <button class="btn btn-danger" onclick="restoreBackup()" disabled id="restoreBtn">
+                                        <i class="bi bi-upload"></i> Επαναφορά
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h6>Αυτόματο Backup</h6>
+                            <form method="POST" action="{{ url_for('main.settings_update', section='backup') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="auto_backup_enabled" 
+                                                   name="auto_backup_enabled" {{ 'checked' if settings.auto_backup_enabled else '' }}>
+                                            <label class="form-check-label" for="auto_backup_enabled">
+                                                Ενεργοποίηση Αυτόματου Backup
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="backup_frequency" class="form-label">Συχνότητα</label>
+                                        <select class="form-select" id="backup_frequency" name="backup_frequency">
+                                            <option value="daily" {{ 'selected' if settings.backup_frequency == 'daily' else '' }}>Καθημερινά</option>
+                                            <option value="weekly" {{ 'selected' if settings.backup_frequency == 'weekly' else '' }}>Εβδομαδιαία</option>
+                                            <option value="monthly" {{ 'selected' if settings.backup_frequency == 'monthly' else '' }}>Μηνιαία</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="backup_retention" class="form-label">Διατήρηση (ημέρες)</label>
+                                        <input type="number" class="form-control" id="backup_retention" name="backup_retention" 
+                                               value="{{ settings.backup_retention or 30 }}" min="7" max="365">
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            <hr>
+                            
+                            <!-- Recent Backups -->
+                            <h6>Πρόσφατα Backups</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Ημερομηνία</th>
+                                            <th>Μέγεθος</th>
+                                            <th>Τύπος</th>
+                                            <th>Ενέργειες</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for backup in recent_backups %}
+                                        <tr>
+                                            <td>{{ backup.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                            <td>{{ backup.size_mb }} MB</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'primary' if backup.type == 'manual' else 'secondary' }}">
+                                                    {{ 'Χειροκίνητο' if backup.type == 'manual' else 'Αυτόματο' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('main.download_backup', backup_id=backup.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Δεν έχετε δικαίωμα για λειτουργίες backup.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings (TopUser only) -->
+                {% if current_user.role == 'topuser' %}
+                <div class="tab-pane fade" id="advanced">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Προχωρημένες Ρυθμίσεις</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <strong>ΠΡΟΣΟΧΗ:</strong> Αυτές οι ρυθμίσεις είναι για προχωρημένους χρήστες. Λάθος αλλαγές μπορούν να προκαλέσουν προβλήματα στο σύστημα.
+                            </div>
+                            
+                            <form method="POST" action="{{ url_for('main.settings_update', section='advanced') }}">
+                                {{ csrf_token() }}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="debug_mode" class="form-label">Debug Mode</label>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="debug_mode" 
+                                                       name="debug_mode" {{ 'checked' if settings.debug_mode else '' }}>
+                                                <label class="form-check-label" for="debug_mode">
+                                                    Ενεργοποίηση Debug
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="log_level" class="form-label">Log Level</label>
+                                            <select class="form-select" id="log_level" name="log_level">
+                                                <option value="DEBUG" {{ 'selected' if settings.log_level == 'DEBUG' else '' }}>DEBUG</option>
+                                                <option value="INFO" {{ 'selected' if settings.log_level == 'INFO' else '' }}>INFO</option>
+                                                <option value="WARNING" {{ 'selected' if settings.log_level == 'WARNING' else '' }}>WARNING</option>
+                                                <option value="ERROR" {{ 'selected' if settings.log_level == 'ERROR' else '' }}>ERROR</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="cache_timeout" class="form-label">Cache Timeout (δευτερόλεπτα)</label>
+                                            <input type="number" class="form-control" id="cache_timeout" name="cache_timeout" 
+                                                   value="{{ settings.cache_timeout or 300 }}" min="60" max="3600">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="max_upload_size" class="form-label">Μέγιστο Μέγεθος Upload (MB)</label>
+                                            <input type="number" class="form-control" id="max_upload_size" name="max_upload_size" 
+                                                   value="{{ settings.max_upload_size or 16 }}" min="1" max="100">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check"></i> Αποθήκευση
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Test email functionality
+function testEmail() {
+    fetch('/settings/test_email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Test email στάλθηκε επιτυχώς!');
+        } else {
+            alert('Σφάλμα αποστολής: ' + data.error);
+        }
+    });
+}
+
+// Backup functionality
+function createBackup() {
+    const includeFiles = document.getElementById('include_files').checked;
+    
+    fetch('/settings/backup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            include_files: includeFiles
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Backup δημιουργήθηκε επιτυχώς!');
+            window.location.href = data.download_url;
+        } else {
+            alert('Σφάλμα δημιουργίας backup: ' + data.error);
+        }
+    });
+}
+
+function restoreBackup() {
+    const fileInput = document.getElementById('backup_file');
+    if (!fileInput.files[0]) {
+        alert('Παρακαλώ επιλέξτε αρχείο backup');
+        return;
+    }
+    
+    if (!confirm('ΠΡΟΣΟΧΗ: Όλα τα τρέχοντα δεδομένα θα χαθούν! Συνέχεια;')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('backup_file', fileInput.files[0]);
+    
+    fetch('/settings/restore', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Επαναφορά ολοκληρώθηκε επιτυχώς!');
+            location.reload();
+        } else {
+            alert('Σφάλμα επαναφοράς: ' + data.error);
+        }
+    });
+}
+
+// Enable restore button when file selected
+document.getElementById('backup_file').addEventListener('change', function() {
+    document.getElementById('restoreBtn').disabled = !this.files[0];
+});
+
+// Form submissions with success messages
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        // Let form submit normally, but show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Αποθήκευση...';
+            submitBtn.disabled = true;
+        }
+    });
+});
+
+// Show success message if returned from form submission
+{% if get_flashed_messages() %}
+const alerts = {{ get_flashed_messages(with_categories=True)|tojson }};
+alerts.forEach(alert => {
+    showAlert(alert[1], alert[0]);
+});
+{% endif %}
+
+function showAlert(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

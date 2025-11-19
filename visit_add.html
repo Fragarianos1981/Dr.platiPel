@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Νέα Επίσκεψη - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white p-4">
+                    <h3 class="mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>Νέα Επίσκεψη
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" id="visitForm">
+                        {{ csrf_token() }}
+                        
+                        <!-- Patient Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label">Ασθενής <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-lg" name="patient_id" required>
+                                    <option value="">Επιλέξτε ασθενή...</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">
+                                        {{ patient.full_name }} ({{ patient.age_string }}, AMKA: {{ patient.amka }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Visit Details -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Ημερομηνία & Ώρα <span class="text-danger">*</span></label>
+                                <input type="datetime-local" class="form-control form-control-lg" 
+                                       name="visit_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Τύπος Επίσκεψης <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-lg" name="visit_type" required>
+                                    <option value="">Επιλέξτε τύπο...</option>
+                                    <option value="consultation">Συμβουλευτική</option>
+                                    <option value="checkup">Γενικός Έλεγχος</option>
+                                    <option value="vaccination">Εμβολιασμός</option>
+                                    <option value="emergency">Επείγον</option>
+                                    <option value="follow_up">Επανέλεγχος</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Chief Complaint -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label">Κύριο Αίτημα</label>
+                                <textarea class="form-control" name="chief_complaint" rows="3" 
+                                          placeholder="Περιγράψτε το κύριο αίτημα του ασθενή..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Emergency Flag -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="emergency_visit">
+                                    <label class="form-check-label">
+                                        <i class="bi bi-exclamation-triangle text-danger me-1"></i>
+                                        Επείγουσα Επίσκεψη
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-3 justify-content-end">
+                            <a href="{{ url_for('main.visit_list') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-circle me-1"></i>Ακύρωση
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-calendar-plus me-1"></i>Δημιουργία Επίσκεψης
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

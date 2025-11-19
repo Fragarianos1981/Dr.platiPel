@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Επίσκεψη #{{ visit.id }} - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header με πληροφορίες ασθενή -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="background: rgba(217, 70, 166, 0.1);">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h4 class="mb-1 text-primary">
+                                <i class="bi bi-person-heart"></i>
+                                {{ visit.patient.full_name }}
+                            </h4>
+                            <p class="mb-0 text-muted">
+                                <strong>ΑΜΚΑ:</strong> {{ visit.patient.amka }} | 
+                                <strong>Ηλικία:</strong> {{ visit.patient.age_string }} |
+                                <strong>Φύλο:</strong> {{ visit.patient.gender_display }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="badge bg-primary fs-6">{{ visit.visit_type_display }}</span>
+                            {% if visit.emergency_visit %}
+                            <span class="badge bg-danger fs-6 ms-2">ΕΠΕΙΓΟΝ</span>
+                            {% endif %}
+                            <div class="mt-2">
+                                <span class="badge bg-{{ 'success' if visit.status == 'completed' else 'warning' if visit.status == 'in_progress' else 'secondary' }}">
+                                    {{ visit.status_display }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Κουμπιά ενεργειών -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('main.patient_card', patient_id=visit.patient_id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Πίσω στον Ασθενή
+                </a>
+                {% if current_user.role in ['doctor', 'admin', 'topuser'] %}
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editVisitModal">
+                    <i class="bi bi-pencil-square"></i> Επεξεργασία
+                </button>
+                {% endif %}
+                {% if visit.status != 'completed' and current_user.role in ['doctor', 'admin', 'topuser'] %}
+                <button type="button" class="btn btn-success" onclick="completeVisit({{ visit.id }})">
+                    <i class="bi bi-check-circle"></i> Ολοκλήρωση
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-info" onclick="printVisit()">
+                    <i class="bi bi-printer"></i> Εκτύπωση
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Αριστερή στήλη -->
+        <div class="col-lg-8">
+            <!-- Βασικά στοιχεία επίσκεψης -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calendar-event"></i> 
+                        Στοιχεία Επίσκεψης
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Ημερομηνία:</strong> {{ visit.visit_date_display }}</p>
+                            <p><strong>Γιατρός:</strong> {{ visit.doctor.full_name if visit.doctor else 'Μη διαθέσιμο' }}</p>
+                            <p><strong>Διάρκεια:</strong> {{ visit.visit_duration or '-' }} λεπτά</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Τύπος:</strong> {{ visit.visit_type_display }}</p>
+                            <p><strong>Κατάσταση:</strong> {{ visit.status_display }}</p>
+                            <p><strong>Χρέωση:</strong> €{{ "%.2f"|format(visit.fee_charged or 0) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Κύριο αίτημα & Ιστορικό -->
+            {% if visit.chief_complaint %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-chat-quote"></i> 
+                        Κύριο Αίτημα
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.chief_complaint }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if visit.history_present_illness %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history"></i> 
+                        Ιστορικό Παρούσας Ασθένειας
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.history_present_illness }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Κλινική εξέταση -->
+            {% if visit.physical_examination %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-search"></i> 
+                        Κλινική Εξέταση
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.physical_examination }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Διάγνωση -->
+            {% if visit.diagnosis %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-check2-square"></i> 
+                        Διάγνωση
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.diagnosis }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Σχέδιο θεραπείας -->
+            {% if visit.treatment_plan %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-check"></i> 
+                        Σχέδιο Θεραπείας
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.treatment_plan }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Συνταγογραφηθέντα φάρμακα -->
+            {% if visit.medications_prescribed %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-capsule"></i> 
+                        Φαρμακευτική Αγωγή
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.medications_prescribed }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Οδηγίες παρακολούθησης -->
+            {% if visit.follow_up_instructions %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-arrow-repeat"></i> 
+                        Οδηγίες Παρακολούθησης
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.follow_up_instructions }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Σημειώσεις -->
+            {% if visit.visit_notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-journal-text"></i> 
+                        Σημειώσεις
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ visit.visit_notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Δεξιά στήλη -->
+        <div class="col-lg-4">
+            <!-- Ζωτικά σημεία -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-heart-pulse"></i> 
+                        Ζωτικά Σημεία
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        {% if visit.weight %}
+                        <div class="col-6">
+                            <small class="text-muted">Βάρος</small>
+                            <div><strong>{{ visit.weight }} kg</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.height %}
+                        <div class="col-6">
+                            <small class="text-muted">Ύψος</small>
+                            <div><strong>{{ visit.height }} cm</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.temperature %}
+                        <div class="col-6">
+                            <small class="text-muted">Θερμοκρασία</small>
+                            <div><strong>{{ visit.temperature }}°C</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.blood_pressure_display %}
+                        <div class="col-6">
+                            <small class="text-muted">Πίεση</small>
+                            <div><strong>{{ visit.blood_pressure_display }}</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.heart_rate %}
+                        <div class="col-6">
+                            <small class="text-muted">Καρδιακός Ρυθμός</small>
+                            <div><strong>{{ visit.heart_rate }} bpm</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.respiratory_rate %}
+                        <div class="col-6">
+                            <small class="text-muted">Αναπνευστικός Ρυθμός</small>
+                            <div><strong>{{ visit.respiratory_rate }}/min</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.oxygen_saturation %}
+                        <div class="col-6">
+                            <small class="text-muted">Κορεσμός O2</small>
+                            <div><strong>{{ visit.oxygen_saturation }}%</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if visit.head_circumference %}
+                        <div class="col-6">
+                            <small class="text-muted">Περιφέρεια Κεφαλής</small>
+                            <div><strong>{{ visit.head_circumference }} cm</strong></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if visit.bmi %}
+                    <hr>
+                    <div class="text-center">
+                        <small class="text-muted">BMI</small>
+                        <div class="fs-4"><strong>{{ "%.1f"|format(visit.bmi) }}</strong></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Επόμενο ραντεβού -->
+            {% if visit.next_appointment %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calendar-plus"></i> 
+                        Επόμενο Ραντεβού
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="fs-5 text-primary">
+                        {{ visit.next_appointment.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Σύνδεσμοι -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-link-45deg"></i> 
+                        Σχετικές Ενέργειες
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.vaccine_add', patient_id=visit.patient_id, visit_id=visit.id) }}" class="btn btn-outline-success">
+                            <i class="bi bi-shield-plus"></i> Καταχώρηση Εμβολίου
+                        </a>
+                        <a href="{{ url_for('main.certificate_add', patient_id=visit.patient_id, visit_id=visit.id) }}" class="btn btn-outline-info">
+                            <i class="bi bi-file-text"></i> Έκδοση Βεβαίωσης
+                        </a>
+                        <a href="{{ url_for('main.transaction_add', patient_id=visit.patient_id, visit_id=visit.id) }}" class="btn btn-outline-warning">
+                            <i class="bi bi-receipt"></i> Χρέωση/Πληρωμή
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal επεξεργασίας επίσκεψης -->
+<div class="modal fade" id="editVisitModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> 
+                    Επεξεργασία Επίσκεψης
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Το περιεχόμενο θα φορτωθεί με AJAX -->
+                <div id="editVisitContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Φόρτωση...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function completeVisit(visitId) {
+    if (confirm('Είστε σίγουροι ότι θέλετε να ολοκληρώσετε την επίσκεψη;')) {
+        fetch(`/visit/${visitId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Σφάλμα: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Σφάλμα δικτύου');
+        });
+    }
+}
+
+function printVisit() {
+    window.print();
+}
+
+// Load edit form when modal opens
+document.getElementById('editVisitModal').addEventListener('show.bs.modal', function () {
+    fetch(`/visit/{{ visit.id }}/edit`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('editVisitContent').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('editVisitContent').innerHTML = '<div class="alert alert-danger">Σφάλμα φόρτωσης</div>';
+        });
+});
+</script>
+{% endblock %}

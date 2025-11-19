@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Νέα Συναλλαγή - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-receipt"></i>
+                        Νέα Συναλλαγή
+                    </h2>
+                    {% if patient %}
+                    <p class="text-muted mb-0">
+                        Ασθενής: <strong>{{ patient.full_name }}</strong> ({{ patient.amka }})
+                    </p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.billing') }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Πίσω
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-receipt"></i>
+                        Στοιχεία Συναλλαγής
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="transactionForm" method="POST" action="{{ url_for('main.transaction_add') }}">
+                        {{ csrf_token() }}
+                        
+                        <!-- Patient Selection -->
+                        {% if not patient %}
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label required">Ασθενής</label>
+                            <select class="form-select" id="patient_id" name="patient_id" required>
+                                <option value="">Επιλέξτε ασθενή...</option>
+                                {% for p in patients %}
+                                <option value="{{ p.id }}">{{ p.full_name }} ({{ p.amka }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                        {% endif %}
+
+                        <!-- Visit Selection (optional) -->
+                        {% if visit %}
+                        <input type="hidden" name="visit_id" value="{{ visit.id }}">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Η συναλλαγή θα συνδεθεί με την επίσκεψη της {{ visit.visit_date_display }}
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Basic Transaction Info -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="transaction_date" class="form-label required">Ημερομηνία Συναλλαγής</label>
+                                    <input type="datetime-local" class="form-control" id="transaction_date" 
+                                           name="transaction_date" value="{{ current_datetime }}" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="transaction_type" class="form-label">Τύπος Συναλλαγής</label>
+                                    <select class="form-select" id="transaction_type" name="transaction_type">
+                                        <option value="payment">Πληρωμή</option>
+                                        <option value="refund">Επιστροφή</option>
+                                        <option value="adjustment">Προσαρμογή</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment_method" class="form-label required">Μέθοδος Πληρωμής</label>
+                                    <select class="form-select" id="payment_method" name="payment_method" required>
+                                        <option value="">Επιλέξτε μέθοδο...</option>
+                                        <option value="cash">Μετρητά</option>
+                                        <option value="card">Κάρτα</option>
+                                        <option value="bank_transfer">Τραπεζική Μεταφορά</option>
+                                        <option value="insurance">Ασφάλιση</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment_status" class="form-label">Κατάσταση Πληρωμής</label>
+                                    <select class="form-select" id="payment_status" name="payment_status">
+                                        <option value="paid">Πληρωμένη</option>
+                                        <option value="pending">Εκκρεμής</option>
+                                        <option value="partial">Μερική</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Payment Details -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="subtotal" class="form-label required">Υπολογισμός (χωρίς ΦΠΑ)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="subtotal" name="subtotal" 
+                                               step="0.01" min="0" placeholder="0.00" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="vat_rate" class="form-label">Συντελεστής ΦΠΑ (%)</label>
+                                    <select class="form-select" id="vat_rate" name="vat_rate">
+                                        <option value="0">0% (Απαλλαγή)</option>
+                                        <option value="6">6%</option>
+                                        <option value="13">13%</option>
+                                        <option value="24" selected>24% (Κανονικός)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="tax_amount" class="form-label">Ποσό ΦΠΑ</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="tax_amount" name="tax_amount" 
+                                               step="0.01" min="0" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="total_amount" class="form-label">Συνολικό Ποσό</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="number" class="form-control" id="total_amount" name="total_amount" 
+                                               step="0.01" min="0" placeholder="0.00" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service Description -->
+                        <div class="mb-3">
+                            <label for="service_description" class="form-label">Περιγραφή Υπηρεσίας</label>
+                            <textarea class="form-control" id="service_description" name="service_description" 
+                                      rows="3" placeholder="Περιγράψτε την παρεχόμενη υπηρεσία...">{{ default_description or '' }}</textarea>
+                        </div>
+
+                        <!-- Quick Service Buttons -->
+                        <div class="mb-3">
+                            <label class="form-label">Συχνές Υπηρεσίες</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setService('Παιδιατρική επίσκεψη', 40)">
+                                    Επίσκεψη (€40)
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setService('Εμβολιασμός', 25)">
+                                    Εμβολιασμός (€25)
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setService('Γενικός έλεγχος', 50)">
+                                    Γενικός έλεγχος (€50)
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setService('Βεβαίωση', 10)">
+                                    Βεβαίωση (€10)
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="setService('Επείγον περιστατικό', 60)">
+                                    Επείγον (€60)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Payment Details (conditionally shown) -->
+                        <div id="payment_details" class="mb-3 d-none">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="payment_date" class="form-label">Ημερομηνία Πληρωμής</label>
+                                    <input type="datetime-local" class="form-control" id="payment_date" 
+                                           name="payment_date" value="{{ current_datetime }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="reference_number" class="form-label">Αριθμός Αναφοράς</label>
+                                    <input type="text" class="form-control" id="reference_number" 
+                                           name="reference_number" placeholder="π.χ. αριθμός κάρτας, επιταγής...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Σημειώσεις</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Επιπλέον σημειώσεις..."></textarea>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.billing') }}" 
+                                       class="btn btn-secondary">
+                                        <i class="bi bi-x-circle"></i> Ακύρωση
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-receipt"></i> Καταχώρηση Συναλλαγής
+                                    </button>
+                                    <button type="submit" name="action" value="save_and_print" class="btn btn-success">
+                                        <i class="bi bi-printer"></i> Καταχώρηση & Εκτύπωση
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Invoice Preview Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-eye"></i> Προεπισκόπηση Τιμολογίου
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="invoicePreview" class="border p-3" style="background: #f8f9fa;">
+                        <div class="text-center mb-3">
+                            <h4 class="text-primary">Dr. PLATI</h4>
+                            <p class="mb-1">Παιδιατρικό Ιατρείο</p>
+                            <small class="text-muted">Τηλ: 210-1234567 | Email: info@drplati.gr</small>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Ασθενής:</strong><br>
+                                <span id="preview_patient">-</span><br>
+                                <span id="preview_amka">-</span>
+                            </div>
+                            <div class="col-6 text-end">
+                                <strong>Ημερομηνία:</strong> <span id="preview_date">-</span><br>
+                                <strong>Αρ. Τιμολογίου:</strong> <span id="preview_invoice">#AUTO</span>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-8">
+                                <strong>Περιγραφή:</strong><br>
+                                <span id="preview_description">-</span>
+                            </div>
+                            <div class="col-4 text-end">
+                                <span id="preview_subtotal">€0.00</span><br>
+                                <small class="text-muted">ΦΠΑ: <span id="preview_vat">€0.00</span></small><br>
+                                <strong>Σύνολο: <span id="preview_total">€0.00</span></strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set service quick buttons
+function setService(description, amount) {
+    document.getElementById('service_description').value = description;
+    document.getElementById('subtotal').value = amount.toFixed(2);
+    
+    // Trigger calculation
+    calculateTotals();
+    updatePreview();
+}
+
+// Calculate VAT and total amounts
+function calculateTotals() {
+    const subtotal = parseFloat(document.getElementById('subtotal').value) || 0;
+    const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
+    
+    const taxAmount = subtotal * (vatRate / 100);
+    const totalAmount = subtotal + taxAmount;
+    
+    document.getElementById('tax_amount').value = taxAmount.toFixed(2);
+    document.getElementById('total_amount').value = totalAmount.toFixed(2);
+    
+    updatePreview();
+}
+
+// Update invoice preview
+function updatePreview() {
+    const patientSelect = document.getElementById('patient_id');
+    const patientText = patientSelect ? patientSelect.options[patientSelect.selectedIndex].text : '{{ patient.full_name if patient else "-" }}';
+    
+    document.getElementById('preview_patient').textContent = patientText !== 'Επιλέξτε ασθενή...' ? patientText : '-';
+    document.getElementById('preview_amka').textContent = '{{ patient.amka if patient else "-" }}';
+    document.getElementById('preview_date').textContent = new Date().toLocaleDateString('el-GR');
+    document.getElementById('preview_description').textContent = document.getElementById('service_description').value || '-';
+    document.getElementById('preview_subtotal').textContent = '€' + (document.getElementById('subtotal').value || '0.00');
+    document.getElementById('preview_vat').textContent = '€' + (document.getElementById('tax_amount').value || '0.00');
+    document.getElementById('preview_total').textContent = '€' + (document.getElementById('total_amount').value || '0.00');
+}
+
+// Show/hide payment details based on status
+document.getElementById('payment_status').addEventListener('change', function() {
+    const paymentDetails = document.getElementById('payment_details');
+    if (this.value === 'paid') {
+        paymentDetails.classList.remove('d-none');
+        document.getElementById('payment_date').required = true;
+    } else {
+        paymentDetails.classList.add('d-none');
+        document.getElementById('payment_date').required = false;
+    }
+});
+
+// Event listeners for calculations
+document.getElementById('subtotal').addEventListener('input', calculateTotals);
+document.getElementById('vat_rate').addEventListener('change', calculateTotals);
+
+// Event listeners for preview updates
+document.getElementById('service_description').addEventListener('input', updatePreview);
+{% if not patient %}
+document.getElementById('patient_id').addEventListener('change', updatePreview);
+{% endif %}
+
+// Form validation
+document.getElementById('transactionForm').addEventListener('submit', function(e) {
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    // Validate amounts
+    const subtotal = parseFloat(document.getElementById('subtotal').value) || 0;
+    if (subtotal <= 0) {
+        document.getElementById('subtotal').classList.add('is-invalid');
+        isValid = false;
+    }
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία και βεβαιωθείτε ότι το ποσό είναι μεγαλύτερο από μηδέν.');
+    }
+});
+
+// Initialize preview
+document.addEventListener('DOMContentLoaded', function() {
+    updatePreview();
+    
+    // Auto-set payment date to current if status is paid
+    const paymentStatus = document.getElementById('payment_status');
+    if (paymentStatus.value === 'paid') {
+        document.getElementById('payment_details').classList.remove('d-none');
+        document.getElementById('payment_date').required = true;
+    }
+    
+    // Set default service for visit if provided
+    {% if visit %}
+    setService('{{ visit.visit_type_display }}', {{ visit.fee_charged or 40 }});
+    {% endif %}
+});
+
+// Auto-complete patient AMKA in preview
+{% if not patient %}
+document.getElementById('patient_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value) {
+        // Extract AMKA from option text (format: "Name (AMKA)")
+        const match = selectedOption.text.match(/\((\d{11})\)/);
+        const amka = match ? match[1] : '-';
+        document.getElementById('preview_amka').textContent = amka;
+    } else {
+        document.getElementById('preview_amka').textContent = '-';
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

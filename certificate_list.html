@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}Βεβαιώσεις - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-file-text"></i>
+                        Ιατρικές Βεβαιώσεις
+                    </h2>
+                    <p class="text-muted mb-0">Διαχείριση εκδοθέντων βεβαιώσεων</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.certificate_add') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Νέα Βεβαίωση
+                    </a>
+                    <button class="btn btn-info" onclick="exportCertificates()">
+                        <i class="bi bi-download"></i> Εξαγωγή
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Σύνολο</h5>
+                            <h3>{{ stats.total_certificates or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-file-text fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Ενεργές</h5>
+                            <h3>{{ stats.active_certificates or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-check-circle fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Λήγουν Σύντομα</h5>
+                            <h3>{{ stats.expiring_soon or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-clock fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Μήνα</h5>
+                            <h3>{{ stats.monthly_certificates or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-calendar-month fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-funnel"></i> Φίλτρα Αναζήτησης
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row align-items-end">
+                        <div class="col-md-2">
+                            <label for="certificate_type" class="form-label">Τύπος</label>
+                            <select class="form-select" id="certificate_type" name="certificate_type">
+                                <option value="">Όλοι</option>
+                                <option value="health" {{ 'selected' if request.args.get('certificate_type') == 'health' }}>Υγείας</option>
+                                <option value="vaccination" {{ 'selected' if request.args.get('certificate_type') == 'vaccination' }}>Εμβολιασμών</option>
+                                <option value="absence" {{ 'selected' if request.args.get('certificate_type') == 'absence' }}>Απουσίας</option>
+                                <option value="sports" {{ 'selected' if request.args.get('certificate_type') == 'sports' }}>Αθλητισμού</option>
+                                <option value="camp" {{ 'selected' if request.args.get('certificate_type') == 'camp' }}>Κατασκήνωσης</option>
+                                <option value="travel" {{ 'selected' if request.args.get('certificate_type') == 'travel' }}>Ταξιδιού</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">Από</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" 
+                                   value="{{ request.args.get('date_from', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">Έως</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" 
+                                   value="{{ request.args.get('date_to', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Κατάσταση</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">Όλες</option>
+                                <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>Ενεργές</option>
+                                <option value="expired" {{ 'selected' if request.args.get('status') == 'expired' }}>Ληγμένες</option>
+                                <option value="cancelled" {{ 'selected' if request.args.get('status') == 'cancelled' }}>Ακυρωμένες</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Αναζήτηση</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   placeholder="Ασθενής, αριθμός βεβαίωσης..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificates Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul"></i> 
+                        Βεβαιώσεις ({{ certificates|length if certificates else 0 }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if certificates %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Αριθμός</th>
+                                    <th>Ημερομηνία</th>
+                                    <th>Ασθενής</th>
+                                    <th>Τύπος</th>
+                                    <th>Σκοπός</th>
+                                    <th>Ισχύει Έως</th>
+                                    <th>Κατάσταση</th>
+                                    <th width="150">Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cert in certificates %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ cert.certificate_number }}</strong>
+                                    </td>
+                                    <td>{{ cert.issue_date_display }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.patient_card', patient_id=cert.patient_id) }}" 
+                                           class="text-decoration-none">
+                                            {{ cert.patient.full_name }}
+                                        </a>
+                                        <small class="text-muted d-block">{{ cert.patient.amka }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ cert.certificate_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="text-truncate d-block" style="max-width: 200px;" 
+                                              title="{{ cert.purpose }}">
+                                            {{ cert.purpose or '-' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if cert.valid_until %}
+                                        <span class="{% if cert.is_expired %}text-danger{% elif cert.days_until_expiry and cert.days_until_expiry <= 30 %}text-warning{% endif %}">
+                                            {{ cert.valid_until_display }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">Απεριόριστη</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if cert.is_active else 'danger' if cert.is_expired else 'warning' }}">
+                                            {{ cert.status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary btn-sm" 
+                                                    onclick="viewCertificate({{ cert.id }})" 
+                                                    title="Προβολή">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info btn-sm" 
+                                                    onclick="printCertificate({{ cert.id }})" 
+                                                    title="Εκτύπωση">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                            {% if current_user.role in ['doctor', 'admin', 'topuser'] %}
+                                            <button class="btn btn-outline-warning btn-sm" 
+                                                    onclick="editCertificate({{ cert.id }})" 
+                                                    title="Επεξεργασία">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% if cert.is_active %}
+                                            <button class="btn btn-outline-danger btn-sm" 
+                                                    onclick="cancelCertificate({{ cert.id }})" 
+                                                    title="Ακύρωση">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if pagination and pagination.pages > 1 %}
+                    <nav aria-label="Σελιδοποίηση βεβαιώσεων" class="p-3">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.prev_num, **request.args) }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for page in pagination.iter_pages() %}
+                                {% if page %}
+                                    {% if page != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for(request.endpoint, page=page, **request.args) }}">{{ page }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.next_num, **request.args) }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-text text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">Δεν βρέθηκαν βεβαιώσεις</h5>
+                        <p class="text-muted">Δοκιμάστε να αλλάξετε τα φίλτρα αναζήτησης</p>
+                        <a href="{{ url_for('main.certificate_add') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Πρώτη Βεβαίωση
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Certificate View Modal -->
+<div class="modal fade" id="certificateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Προβολή Βεβαίωσης</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="certificateContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Φόρτωση...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Κλείσιμο</button>
+                <button type="button" class="btn btn-primary" onclick="printModalContent()">
+                    <i class="bi bi-printer"></i> Εκτύπωση
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// View certificate
+function viewCertificate(certificateId) {
+    const modal = new bootstrap.Modal(document.getElementById('certificateModal'));
+    
+    fetch(`/certificate/${certificateId}/view`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('certificateContent').innerHTML = html;
+            modal.show();
+        })
+        .catch(error => {
+            document.getElementById('certificateContent').innerHTML = 
+                '<div class="alert alert-danger">Σφάλμα φόρτωσης βεβαίωσης</div>';
+            modal.show();
+        });
+}
+
+// Edit certificate
+function editCertificate(certificateId) {
+    window.location.href = `/certificate/${certificateId}/edit`;
+}
+
+// Print certificate
+function printCertificate(certificateId) {
+    window.open(`/certificate/${certificateId}/print`, '_blank');
+}
+
+// Cancel certificate
+function cancelCertificate(certificateId) {
+    if (confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε αυτή τη βεβαίωση;')) {
+        fetch(`/certificate/${certificateId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Σφάλμα: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Σφάλμα δικτύου');
+        });
+    }
+}
+
+// Export certificates
+function exportCertificates() {
+    const form = document.querySelector('form');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    params.append('export', 'true');
+    
+    window.location.href = `/certificates/export?${params.toString()}`;
+}
+
+// Print modal content
+function printModalContent() {
+    const content = document.getElementById('certificateContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Βεβαίωση - Dr. PLATI</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 2cm; }
+                h1 { text-align: center; color: #d946a6; }
+                .header { text-align: center; margin-bottom: 2cm; }
+                .content { line-height: 1.6; }
+                .footer { margin-top: 2cm; text-align: right; }
+            </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+</script>
+{% endblock %}

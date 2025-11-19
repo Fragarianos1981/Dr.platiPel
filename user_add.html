@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Προσθήκη Χρήστη - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #f8d7da, #f1aeb5);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="h3 text-white mb-1">
+                                <i class="bi bi-person-plus me-2"></i>Προσθήκη Νέου Χρήστη
+                            </h2>
+                            <p class="text-white-50 mb-0">Δημιουργία νέου λογαριασμού χρήστη</p>
+                        </div>
+                        <a href="{{ url_for('main.user_list') }}" class="btn btn-light">
+                            <i class="bi bi-arrow-left me-1"></i>Πίσω
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4">
+                    <form method="POST" id="userForm">
+                        {{ csrf_token() }}
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="bi bi-person-fill me-2"></i>Στοιχεία Χρήστη
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">Όνομα <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="first_name" 
+                                       name="first_name" required maxlength="50">
+                                <div class="form-text">Μέχρι 50 χαρακτήρες</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Επώνυμο <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="last_name" 
+                                       name="last_name" required maxlength="50">
+                                <div class="form-text">Μέχρι 50 χαρακτήρες</div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-at"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="username" 
+                                           name="username" required maxlength="50">
+                                </div>
+                                <div class="form-text">Μόνο γράμματα, αριθμοί, _ και -</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-envelope"></i>
+                                    </span>
+                                    <input type="email" class="form-control" id="email" 
+                                           name="email" required maxlength="100">
+                                </div>
+                                <div class="form-text">Έγκυρη διεύθυνση email</div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Τηλέφωνο</label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-telephone"></i>
+                                    </span>
+                                    <input type="tel" class="form-control" id="phone" 
+                                           name="phone" maxlength="20">
+                                </div>
+                                <div class="form-text">Προαιρετικό</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="role" class="form-label">Ρόλος <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-lg" id="role" name="role" required>
+                                    <option value="">Επιλέξτε ρόλο...</option>
+                                    <option value="secretary">Γραμματεία</option>
+                                    <option value="doctor">Γιατρός</option>
+                                    <option value="admin">Διαχειριστής</option>
+                                    {% if current_user.role == 'topuser' %}
+                                    <option value="topuser">Super Admin</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Authentication -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="bi bi-key-fill me-2"></i>Στοιχεία Πρόσβασης
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">Κωδικός Πρόσβασης <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-lock"></i>
+                                    </span>
+                                    <input type="password" class="form-control" id="password" 
+                                           name="password" required minlength="6" maxlength="50">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="togglePassword('password')">
+                                        <i class="bi bi-eye" id="password-icon"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Τουλάχιστον 6 χαρακτήρες</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password_confirm" class="form-label">Επιβεβαίωση Κωδικού <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </span>
+                                    <input type="password" class="form-control" id="password_confirm" 
+                                           name="password_confirm" required minlength="6" maxlength="50">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            onclick="togglePassword('password_confirm')">
+                                        <i class="bi bi-eye" id="password_confirm-icon"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Επαναλάβετε τον κωδικό</div>
+                            </div>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="is_active" 
+                                           name="is_active" checked>
+                                    <label class="form-check-label" for="is_active">
+                                        Ενεργός λογαριασμός
+                                    </label>
+                                </div>
+                                <small class="text-muted">Ο χρήστης μπορεί να συνδεθεί στο σύστημα</small>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label for="profile_notes" class="form-label">Σημειώσεις Προφίλ</label>
+                                <textarea class="form-control" id="profile_notes" name="profile_notes" 
+                                          rows="3" maxlength="500"></textarea>
+                                <div class="form-text">Προαιρετικές σημειώσεις για τον χρήστη (μέχρι 500 χαρακτήρες)</div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <hr class="my-4">
+                                <div class="d-flex gap-3 justify-content-end">
+                                    <a href="{{ url_for('main.user_list') }}" class="btn btn-outline-secondary btn-lg">
+                                        <i class="bi bi-x-circle me-1"></i>Ακύρωση
+                                    </a>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-person-plus me-1"></i>Δημιουργία Χρήστη
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Password visibility toggle
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '-icon');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+    } else {
+        field.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+    }
+}
+
+// Form validation
+document.getElementById('userForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('password_confirm').value;
+    
+    if (password !== passwordConfirm) {
+        e.preventDefault();
+        alert('Οι κωδικοί πρόσβασης δεν ταιριάζουν!');
+        return false;
+    }
+    
+    if (password.length < 6) {
+        e.preventDefault();
+        alert('Ο κωδικός πρόσβασης πρέπει να έχει τουλάχιστον 6 χαρακτήρες!');
+        return false;
+    }
+});
+
+// Username validation
+document.getElementById('username').addEventListener('input', function() {
+    const username = this.value;
+    const regex = /^[a-zA-Z0-9_-]+$/;
+    
+    if (username && !regex.test(username)) {
+        this.setCustomValidity('Μόνο γράμματα, αριθμοί, _ και -');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+
+// Real-time availability check for username
+document.getElementById('username').addEventListener('blur', function() {
+    const username = this.value.trim();
+    if (username.length >= 3) {
+        fetch('/api/check-username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({username: username})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.available) {
+                this.setCustomValidity('Το username υπάρχει ήδη');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    }
+});
+
+// Real-time availability check for email
+document.getElementById('email').addEventListener('blur', function() {
+    const email = this.value.trim();
+    if (email) {
+        fetch('/api/check-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({email: email})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.available) {
+                this.setCustomValidity('Το email υπάρχει ήδη');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    }
+});
+
+// Character counters
+document.getElementById('profile_notes').addEventListener('input', function() {
+    const maxLength = 500;
+    const currentLength = this.value.length;
+    const counterElement = this.parentElement.querySelector('.char-counter');
+    
+    if (!counterElement) {
+        const counter = document.createElement('div');
+        counter.className = 'form-text char-counter';
+        this.parentElement.appendChild(counter);
+    }
+    
+    document.querySelector('.char-counter').textContent = `${currentLength}/${maxLength} χαρακτήρες`;
+    
+    if (currentLength > maxLength * 0.9) {
+        document.querySelector('.char-counter').style.color = '#dc3545';
+    } else {
+        document.querySelector('.char-counter').style.color = '#6c757d';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Προβολή Επίσκεψης - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="card border-0 shadow-lg mb-4">
+                <div class="card-header bg-info text-white p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">
+                                <i class="bi bi-calendar-heart me-2"></i>Επίσκεψη #{{ visit.id }}
+                            </h3>
+                            <p class="mb-0">{{ visit.visit_date_display }}</p>
+                        </div>
+                        <div>
+                            <span class="badge badge-status-{{ visit.status }} fs-6">{{ visit.status_display }}</span>
+                            {% if visit.is_emergency %}
+                            <span class="badge bg-danger fs-6 ms-1">ΕΠΕΙΓΟΝ</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Patient Info -->
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 shadow h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-person me-2"></i>Στοιχεία Ασθενή</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>{{ visit.patient.full_name }}</h6>
+                            <p class="text-muted mb-2">{{ visit.patient.age_string }}</p>
+                            <hr>
+                            <small class="text-muted">ΑΜΚΑ:</small>
+                            <p>{{ visit.patient.amka }}</p>
+                            <small class="text-muted">Τηλέφωνο:</small>
+                            <p>{{ visit.patient.primary_contact_phone or '-' }}</p>
+                            <a href="{{ url_for('main.patient_view', patient_id=visit.patient_id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye me-1"></i>Προβολή Καρτέλας
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visit Details -->
+                <div class="col-md-8 mb-4">
+                    <div class="card border-0 shadow h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Στοιχεία Επίσκεψης</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <small class="text-muted">Τύπος Επίσκεψης:</small>
+                                    <p>{{ visit.visit_type_display }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Γιατρός:</small>
+                                    <p>{{ visit.doctor.full_name }}</p>
+                                </div>
+                            </div>
+
+                            {% if visit.chief_complaint %}
+                            <div class="mb-3">
+                                <small class="text-muted">Κύριο Αίτημα:</small>
+                                <p>{{ visit.chief_complaint }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if visit.diagnosis %}
+                            <div class="mb-3">
+                                <small class="text-muted">Διάγνωση:</small>
+                                <div class="alert alert-light border">{{ visit.diagnosis }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if visit.treatment_plan %}
+                            <div class="mb-3">
+                                <small class="text-muted">Σχέδιο Θεραπείας:</small>
+                                <div class="alert alert-light border">{{ visit.treatment_plan }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vital Signs -->
+            {% if visit.weight or visit.height or visit.temperature %}
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-thermometer me-2"></i>Ζωτικά Σημεία</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if visit.weight %}
+                        <div class="col-md-3 text-center">
+                            <h4 class="text-primary">{{ visit.weight }} kg</h4>
+                            <small class="text-muted">Βάρος</small>
+                        </div>
+                        {% endif %}
+                        {% if visit.height %}
+                        <div class="col-md-3 text-center">
+                            <h4 class="text-info">{{ visit.height }} cm</h4>
+                            <small class="text-muted">Ύψος</small>
+                        </div>
+                        {% endif %}
+                        {% if visit.bmi %}
+                        <div class="col-md-3 text-center">
+                            <h4 class="text-success">{{ visit.bmi }}</h4>
+                            <small class="text-muted">BMI</small>
+                        </div>
+                        {% endif %}
+                        {% if visit.temperature %}
+                        <div class="col-md-3 text-center">
+                            <h4 class="text-warning">{{ visit.temperature }}°C</h4>
+                            <small class="text-muted">Θερμοκρασία</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="card border-0 shadow">
+                <div class="card-body">
+                    <div class="d-flex gap-3 justify-content-between">
+                        <a href="{{ url_for('main.visit_list') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Πίσω στη Λίστα
+                        </a>
+                        <div class="d-flex gap-2">
+                            {% if current_user.can_conduct_visits %}
+                            <a href="{{ url_for('main.visit_edit', visit_id=visit.id) }}" 
+                               class="btn btn-primary">
+                                <i class="bi bi-pencil me-1"></i>Επεξεργασία
+                            </a>
+                            {% endif %}
+                            <button onclick="window.print()" class="btn btn-outline-info">
+                                <i class="bi bi-printer me-1"></i>Εκτύπωση
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,464 @@
+{% extends "base.html" %}
+
+{% block title %}Λίστα Ασθενών - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-primary">
+                <i class="bi bi-people me-2"></i>
+                Λίστα Ασθενών
+            </h2>
+            <p class="text-muted mb-0">
+                Διαχείριση όλων των ασθενών του ιατρείου
+                {% if total_patients %}
+                    <span class="badge bg-primary ms-2">{{ total_patients }} συνολικά</span>
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{{ url_for('patient_add') }}" class="btn btn-primary">
+                <i class="bi bi-person-plus me-1"></i>Νέος Ασθενής
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('patient_list') }}" class="row g-3">
+                <!-- Search Input -->
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Αναζήτηση</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               id="search"
+                               name="search" 
+                               placeholder="Όνομα, επώνυμο, ΑΜΚΑ, τηλέφωνο..."
+                               value="{{ request.args.get('search', '') }}">
+                    </div>
+                </div>
+
+                <!-- Gender Filter -->
+                <div class="col-md-2">
+                    <label for="gender" class="form-label">Φύλο</label>
+                    <select class="form-select" name="gender" id="gender">
+                        <option value="">Όλα</option>
+                        <option value="M" {{ 'selected' if request.args.get('gender') == 'M' }}>Αγόρια</option>
+                        <option value="F" {{ 'selected' if request.args.get('gender') == 'F' }}>Κορίτσια</option>
+                    </select>
+                </div>
+
+                <!-- Age Group Filter -->
+                <div class="col-md-2">
+                    <label for="age_group" class="form-label">Ηλικιακή Ομάδα</label>
+                    <select class="form-select" name="age_group" id="age_group">
+                        <option value="">Όλες</option>
+                        <option value="infant" {{ 'selected' if request.args.get('age_group') == 'infant' }}>Βρέφη (0-1)</option>
+                        <option value="toddler" {{ 'selected' if request.args.get('age_group') == 'toddler' }}>Νήπια (1-3)</option>
+                        <option value="preschool" {{ 'selected' if request.args.get('age_group') == 'preschool' }}>Προσχολικά (3-6)</option>
+                        <option value="school" {{ 'selected' if request.args.get('age_group') == 'school' }}>Σχολικά (6-12)</option>
+                        <option value="teen" {{ 'selected' if request.args.get('age_group') == 'teen' }}>Έφηβοι (12+)</option>
+                    </select>
+                </div>
+
+                <!-- Sort By -->
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Ταξινόμηση</label>
+                    <select class="form-select" name="sort_by" id="sort_by">
+                        <option value="name" {{ 'selected' if request.args.get('sort_by', 'name') == 'name' }}>Όνομα</option>
+                        <option value="age" {{ 'selected' if request.args.get('sort_by') == 'age' }}>Ηλικία</option>
+                        <option value="recent" {{ 'selected' if request.args.get('sort_by') == 'recent' }}>Πρόσφατα</option>
+                        <option value="amka" {{ 'selected' if request.args.get('sort_by') == 'amka' }}>ΑΜΚΑ</option>
+                    </select>
+                </div>
+
+                <!-- Search Button -->
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-1"></i>Αναζήτηση
+                    </button>
+                    <a href="{{ url_for('patient_list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Επαναφορά
+                    </a>
+                    {% if request.args.get('search') or request.args.get('gender') or request.args.get('age_group') %}
+                    <span class="text-muted ms-3">
+                        <i class="bi bi-funnel me-1"></i>
+                        Εφαρμόζονται φίλτρα
+                    </span>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    {% if patients %}
+        <!-- Statistics Bar -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                    <div class="text-center">
+                        <div class="h4 text-primary mb-0">{{ patients|length }}</div>
+                        <small class="text-muted">Αποτελέσματα</small>
+                    </div>
+                    <div class="text-center">
+                        <div class="h4 text-info mb-0">
+                            {{ patients|selectattr('gender', 'equalto', 'M')|list|length }}
+                        </div>
+                        <small class="text-muted">Αγόρια</small>
+                    </div>
+                    <div class="text-center">
+                        <div class="h4 text-info mb-0">
+                            {{ patients|selectattr('gender', 'equalto', 'F')|list|length }}
+                        </div>
+                        <small class="text-muted">Κορίτσια</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patients Grid -->
+        <div class="row">
+            {% for patient in patients %}
+                <div class="col-xl-4 col-lg-6 mb-4">
+                    <div class="card patient-card h-100" data-patient-id="{{ patient.id }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-person me-2 text-primary"></i>
+                                    {{ patient.full_name }}
+                                </h5>
+                                <span class="badge bg-{{ 'primary' if patient.gender == 'M' else 'info' }}">
+                                    {{ 'Αγόρι' if patient.gender == 'M' else 'Κορίτσι' }}
+                                </span>
+                            </div>
+                            
+                            <div class="patient-details mb-3">
+                                <div class="row g-0 text-sm">
+                                    <div class="col-12 mb-2">
+                                        <i class="bi bi-calendar3 me-2 text-muted"></i>
+                                        <strong>{{ patient.age_string }}</strong>
+                                        <span class="text-muted ms-2">({{ patient.date_of_birth.strftime('%d/%m/%Y') }})</span>
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <i class="bi bi-card-text me-2 text-muted"></i>
+                                        <code class="text-dark">{{ patient.amka }}</code>
+                                    </div>
+                                    {% if patient.phone %}
+                                    <div class="col-12 mb-2">
+                                        <i class="bi bi-telephone me-2 text-muted"></i>
+                                        <a href="tel:{{ patient.phone }}" class="text-decoration-none">
+                                            {{ patient.phone }}
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                    {% if patient.insurance %}
+                                    <div class="col-12 mb-2">
+                                        <i class="bi bi-shield-check me-2 text-muted"></i>
+                                        {{ patient.insurance }}
+                                    </div>
+                                    {% endif %}
+                                    {% if patient.allergies %}
+                                    <div class="col-12">
+                                        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
+                                        <span class="text-warning">Αλλεργίες</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Last Visit Info -->
+                            {% if patient.last_visit_date %}
+                            <div class="last-visit mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-clock me-1"></i>
+                                    Τελευταία επίσκεψη: {{ patient.last_visit_date.strftime('%d/%m/%Y') }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-footer bg-transparent">
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('patient_card', patient_id=patient.id) }}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-eye me-1"></i>Προβολή
+                                </a>
+                                {% if current_user.is_doctor %}
+                                <a href="{{ url_for('visit_add', patient_id=patient.id) }}" 
+                                   class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-plus-circle me-1"></i>Επίσκεψη
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('patient_edit', patient_id=patient.id) }}" 
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-pencil me-1"></i>Επεξ.
+                                </a>
+                                <a href="{{ url_for('billing', patient_id=patient.id) }}" 
+                                   class="btn btn-outline-warning btn-sm">
+                                    <i class="bi bi-credit-card me-1"></i>€
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination and pagination.pages > 1 %}
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="Patient pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patient_list', page=pagination.prev_num, **request.args) }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="bi bi-chevron-left"></i>
+                                </span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                {% if page_num != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('patient_list', page=page_num, **request.args) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('patient_list', page=pagination.next_num, **request.args) }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    <i class="bi bi-chevron-right"></i>
+                                </span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                
+                <!-- Pagination Info -->
+                <div class="text-center text-muted">
+                    <small>
+                        Σελίδα {{ pagination.page }} από {{ pagination.pages }} 
+                        ({{ pagination.total }} συνολικά ασθενείς)
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <!-- No Results -->
+        <div class="text-center py-5">
+            <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+            <h4 class="text-muted mt-3">
+                {% if request.args.get('search') or request.args.get('gender') or request.args.get('age_group') %}
+                    Δεν βρέθηκαν ασθενείς
+                {% else %}
+                    Δεν υπάρχουν ασθενείς
+                {% endif %}
+            </h4>
+            <p class="text-muted">
+                {% if request.args.get('search') or request.args.get('gender') or request.args.get('age_group') %}
+                    Δοκιμάστε να αλλάξετε τα κριτήρια αναζήτησης
+                    <br>
+                    <a href="{{ url_for('patient_list') }}" class="btn btn-outline-primary mt-2">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Καθάρισμα φίλτρων
+                    </a>
+                {% else %}
+                    Προσθέστε τον πρώτο ασθενή στο σύστημα
+                    <br>
+                    <a href="{{ url_for('patient_add') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-person-plus me-1"></i>Προσθήκη Ασθενή
+                    </a>
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.patient-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.patient-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-color);
+    box-shadow: 0 8px 25px rgba(217, 70, 166, 0.15);
+}
+
+.patient-details .text-sm {
+    font-size: 0.875rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.last-visit {
+    border-top: 1px solid #eee;
+    padding-top: 0.75rem;
+}
+
+.btn-group .btn {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .patient-card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group .btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.4rem;
+    }
+    
+    .patient-details .text-sm {
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Patient card click handling
+    const patientCards = document.querySelectorAll('.patient-card');
+    
+    patientCards.forEach(function(card) {
+        card.addEventListener('click', function(e) {
+            // Don't trigger if clicking on buttons or links
+            if (e.target.closest('.btn') || e.target.closest('a')) {
+                return;
+            }
+            
+            const patientId = this.getAttribute('data-patient-id');
+            if (patientId) {
+                window.location.href = `/patients/${patientId}`;
+            }
+        });
+        
+        // Add hover effect
+        card.addEventListener('mouseenter', function() {
+            this.style.cursor = 'pointer';
+        });
+    });
+    
+    // Auto-submit form on filter change
+    const filterSelects = document.querySelectorAll('#gender, #age_group, #sort_by');
+    filterSelects.forEach(function(select) {
+        select.addEventListener('change', function() {
+            // Auto-submit if not searching
+            if (!document.getElementById('search').value.trim()) {
+                this.closest('form').submit();
+            }
+        });
+    });
+    
+    // Search input enhancement
+    const searchInput = document.getElementById('search');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const value = this.value.trim();
+        
+        // Clear filters if search is cleared
+        if (!value) {
+            document.getElementById('gender').value = '';
+            document.getElementById('age_group').value = '';
+        }
+    });
+    
+    // Quick search on Enter
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
+    
+    // Highlight search terms
+    const searchQuery = '{{ request.args.get("search", "") }}';
+    if (searchQuery) {
+        const regex = new RegExp(`(${searchQuery})`, 'gi');
+        
+        document.querySelectorAll('.patient-card .card-title, .patient-card code').forEach(function(element) {
+            element.innerHTML = element.innerHTML.replace(regex, '<mark>$1</mark>');
+        });
+    }
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+F to focus search
+        if (e.ctrlKey && e.key === 'f') {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        }
+        
+        // Ctrl+N for new patient
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = '{{ url_for("patient_add") }}';
+        }
+    });
+    
+    // Lazy loading for large lists
+    if (patientCards.length > 50) {
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('loaded');
+                }
+            });
+        }, {
+            rootMargin: '50px'
+        });
+        
+        patientCards.forEach(function(card) {
+            observer.observe(card);
+        });
+    }
+});
+</script>
+{% endblock %}

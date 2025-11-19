@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block title %}{{ patient.full_name }} - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Patient Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card patient-header">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="patient-avatar me-4">
+                                    <i class="bi bi-person-circle text-primary"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-primary mb-1">
+                                        {{ patient.full_name }}
+                                        <span class="badge bg-{{ 'primary' if patient.gender == 'M' else 'info' }} ms-2">
+                                            {{ 'Αγόρι' if patient.gender == 'M' else 'Κορίτσι' }}
+                                        </span>
+                                    </h3>
+                                    <div class="patient-details">
+                                        <span class="me-4">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            {{ patient.age_string }}
+                                        </span>
+                                        <span class="me-4">
+                                            <i class="bi bi-card-text me-1"></i>
+                                            ΑΜΚΑ: {{ patient.amka }}
+                                        </span>
+                                        {% if patient.phone %}
+                                        <span class="me-4">
+                                            <i class="bi bi-telephone me-1"></i>
+                                            {{ patient.phone }}
+                                        </span>
+                                        {% endif %}
+                                        {% if patient.insurance %}
+                                        <span>
+                                            <i class="bi bi-shield-check me-1"></i>
+                                            {{ patient.insurance }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="btn-group" role="group">
+                                {% if current_user.is_doctor %}
+                                <a href="{{ url_for('visit_add', patient_id=patient.id) }}" 
+                                   class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-1"></i>Νέα Επίσκεψη
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('billing', patient_id=patient.id) }}" 
+                                   class="btn btn-warning">
+                                    <i class="bi bi-credit-card me-1"></i>Χρέωση
+                                </a>
+                                <a href="{{ url_for('patient_edit', patient_id=patient.id) }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil me-1"></i>Επεξεργασία
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Patient Information Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="patientTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" 
+                                    id="demographics-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#demographics" 
+                                    type="button" 
+                                    role="tab">
+                                <i class="bi bi-person me-2"></i>Στοιχεία
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" 
+                                    id="visits-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#visits" 
+                                    type="button" 
+                                    role="tab">
+                                <i class="bi bi-clipboard2-pulse me-2"></i>Επισκέψεις
+                                {% if visits|length > 0 %}
+                                <span class="badge bg-secondary ms-1">{{ visits|length }}</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" 
+                                    id="vaccines-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#vaccines" 
+                                    type="button" 
+                                    role="tab">
+                                <i class="bi bi-shield-plus me-2"></i>Εμβόλια
+                                {% if vaccines|length > 0 %}
+                                <span class="badge bg-secondary ms-1">{{ vaccines|length }}</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" 
+                                    id="billing-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#billing" 
+                                    type="button" 
+                                    role="tab">
+                                <i class="bi bi-cash-coin me-2"></i>Οικονομικά
+                                {% if transactions|length > 0 %}
+                                <span class="badge bg-secondary ms-1">{{ transactions|length }}</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" 
+                                    id="certificates-tab" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#certificates" 
+                                    type="button" 
+                                    role="tab">
+                                <i class="bi bi-file-earmark-medical me-2"></i>Βεβαιώσεις
+                                {% if certificates|length > 0 %}
+                                <span class="badge bg-secondary ms-1">{{ certificates|length }}</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-body">
+                    <div class="tab-content" id="patientTabsContent">
+                        <!-- Demographics Tab -->
+                        <div class="tab-pane fade show active" id="demographics" role="tabpanel">
+                            <div class="row">
+                                <!-- Personal Information -->
+                                <div class="col-md-6">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-person me-2"></i>Προσωπικά Στοιχεία
+                                    </h5>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td class="fw-bold">Όνομα:</td>
+                                            <td>{{ patient.first_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Επώνυμο:</td>
+                                            <td>{{ patient.last_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">ΑΜΚΑ:</td>
+                                            <td><code>{{ patient.amka }}</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Ημερομηνία Γέννησης:</td>
+                                            <td>{{ patient.date_of_birth.strftime('%d/%m/%Y') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Ηλικία:</td>
+                                            <td>{{ patient.age_string }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Φύλο:</td>
+                                            <td>
+                                                {% if patient.gender == 'M' %}
+                                                    <i class="bi bi-gender-male text-primary me-1"></i>Αγόρι
+                                                {% else %}
+                                                    <i class="bi bi-gender-female text-info me-1"></i>Κορίτσι
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if patient.place_of_birth %}
+                                        <tr>
+                                            <td class="fw-bold">Τόπος Γέννησης:</td>
+                                            <td>{{ patient.place_of_birth }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                    
+                                    {% if patient.current_weight or patient.current_height %}
+                                    <h6 class="text-primary mb-3 mt-4">
+                                        <i class="bi bi-rulers me-2"></i>Τρέχουσες Μετρήσεις
+                                    </h6>
+                                    <table class="table table-sm">
+                                        {% if patient.current_weight %}
+                                        <tr>
+                                            <td class="fw-bold">Βάρος:</td>
+                                            <td>{{ patient.current_weight }} kg</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.current_height %}
+                                        <tr>
+                                            <td class="fw-bold">Ύψος:</td>
+                                            <td>{{ patient.current_height }} cm</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.head_circumference %}
+                                        <tr>
+                                            <td class="fw-bold">Περίμετρος Κεφαλής:</td>
+                                            <td>{{ patient.head_circumference }} cm</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Contact & Family Information -->
+                                <div class="col-md-6">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-telephone me-2"></i>Στοιχεία Επικοινωνίας
+                                    </h5>
+                                    <table class="table table-sm">
+                                        {% if patient.address %}
+                                        <tr>
+                                            <td class="fw-bold">Διεύθυνση:</td>
+                                            <td>{{ patient.address }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.city %}
+                                        <tr>
+                                            <td class="fw-bold">Πόλη:</td>
+                                            <td>{{ patient.city }} {{ patient.postal_code if patient.postal_code }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.phone %}
+                                        <tr>
+                                            <td class="fw-bold">Τηλέφωνο:</td>
+                                            <td><a href="tel:{{ patient.phone }}">{{ patient.phone }}</a></td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.mobile %}
+                                        <tr>
+                                            <td class="fw-bold">Κινητό:</td>
+                                            <td><a href="tel:{{ patient.mobile }}">{{ patient.mobile }}</a></td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.email %}
+                                        <tr>
+                                            <td class="fw-bold">Email:</td>
+                                            <td><a href="mailto:{{ patient.email }}">{{ patient.email }}</a></td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                    
+                                    <h6 class="text-primary mb-3 mt-4">
+                                        <i class="bi bi-people me-2"></i>Γονείς/Κηδεμόνες
+                                    </h6>
+                                    {% if patient.father_name or patient.mother_name %}
+                                    <table class="table table-sm">
+                                        {% if patient.father_name %}
+                                        <tr>
+                                            <td class="fw-bold">Πατέρας:</td>
+                                            <td>
+                                                {{ patient.father_name }} {{ patient.father_surname if patient.father_surname }}
+                                                {% if patient.father_phone %}
+                                                    <br><small><a href="tel:{{ patient.father_phone }}">{{ patient.father_phone }}</a></small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.mother_name %}
+                                        <tr>
+                                            <td class="fw-bold">Μητέρα:</td>
+                                            <td>
+                                                {{ patient.mother_name }} {{ patient.mother_surname if patient.mother_surname }}
+                                                {% if patient.mother_phone %}
+                                                    <br><small><a href="tel:{{ patient.mother_phone }}">{{ patient.mother_phone }}</a></small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.guardian_name %}
+                                        <tr>
+                                            <td class="fw-bold">Κηδεμόνας:</td>
+                                            <td>
+                                                {{ patient.guardian_name }} {{ patient.guardian_surname if patient.guardian_surname }}
+                                                {% if patient.guardian_relation %}({{ patient.guardian_relation }}){% endif %}
+                                                {% if patient.guardian_phone %}
+                                                    <br><small><a href="tel:{{ patient.guardian_phone }}">{{ patient.guardian_phone }}</a></small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Medical Information -->
+                            {% if patient.insurance or patient.allergies or patient.chronic_conditions or patient.medications or patient.family_history or patient.notes %}
+                            <hr>
+                            <div class="row">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-heart-pulse me-2"></i>Ιατρικές Πληροφορίες
+                                    </h5>
+                                </div>
+                                
+                                {% if patient.insurance or patient.blood_type %}
+                                <div class="col-md-6">
+                                    <table class="table table-sm">
+                                        {% if patient.insurance %}
+                                        <tr>
+                                            <td class="fw-bold">Ασφάλιση:</td>
+                                            <td>
+                                                {{ patient.insurance }}
+                                                {% if patient.insurance_number %}
+                                                    <br><small>{{ patient.insurance_number }}</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if patient.blood_type %}
+                                        <tr>
+                                            <td class="fw-bold">Ομάδα Αίματος:</td>
+                                            <td><span class="badge bg-danger">{{ patient.blood_type }}</span></td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="col-md-12">
+                                    {% if patient.allergies %}
+                                    <div class="alert alert-warning mb-3">
+                                        <h6 class="alert-heading">
+                                            <i class="bi bi-exclamation-triangle me-2"></i>Αλλεργίες
+                                        </h6>
+                                        <p class="mb-0">{{ patient.allergies }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if patient.chronic_conditions %}
+                                    <div class="mb-3">
+                                        <h6><i class="bi bi-clipboard2-heart me-2"></i>Χρόνια Νοσήματα</h6>
+                                        <p class="text-muted">{{ patient.chronic_conditions }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if patient.medications %}
+                                    <div class="mb-3">
+                                        <h6><i class="bi bi-capsule me-2"></i>Φαρμακευτική Αγωγή</h6>
+                                        <p class="text-muted">{{ patient.medications }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if patient.family_history %}
+                                    <div class="mb-3">
+                                        <h6><i class="bi bi-tree me-2"></i>Οικογενειακό Ιστορικό</h6>
+                                        <p class="text-muted">{{ patient.family_history }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if patient.notes %}
+                                    <div class="mb-3">
+                                        <h6><i class="bi bi-journal-text me-2"></i>Επιπλέον Σημειώσεις</h6>
+                                        <p class="text-muted">{{ patient.notes }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Visits Tab -->
+                        <div class="tab-pane fade" id="visits" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-clipboard2-pulse me-2"></i>Επισκέψεις
+                                </h5>
+                                {% if current_user.is_doctor %}
+                                <a href="{{ url_for('visit_add', patient_id=patient.id) }}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Νέα Επίσκεψη
+                                </a>
+                                {% endif %}
+                            </div>
+                            
+                            {% if visits %}
+                                {% for visit in visits %}
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <h6 class="card-title">
+                                                    <i class="bi bi-calendar3 me-2"></i>
+                                                    {{ visit.visit_date.strftime('%d/%m/%Y %H:%M') }}
+                                                    <span class="badge bg-{{ 'success' if visit.status == 'completed' else 'warning' }} ms-2">
+                                                        {{ visit.visit_type|title }}
+                                                    </span>
+                                                </h6>
+                                                {% if visit.chief_complaint %}
+                                                <p class="text-muted mb-1">
+                                                    <strong>Κύριο αίτημα:</strong> {{ visit.chief_complaint }}
+                                                </p>
+                                                {% endif %}
+                                                {% if visit.diagnosis %}
+                                                <p class="text-muted mb-1">
+                                                    <strong>Διάγνωση:</strong> {{ visit.diagnosis }}
+                                                </p>
+                                                {% endif %}
+                                                {% if visit.doctor %}
+                                                <small class="text-muted">
+                                                    <i class="bi bi-person-badge me-1"></i>
+                                                    {{ visit.doctor.full_name }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                {% if current_user.is_doctor %}
+                                                <a href="{{ url_for('visit_edit', visit_id=visit.id) }}" 
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-pencil me-1"></i>Επεξεργασία
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-clipboard2-pulse text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="text-muted mt-3">Δεν υπάρχουν επισκέψεις</h5>
+                                    {% if current_user.is_doctor %}
+                                    <p class="text-muted">
+                                        <a href="{{ url_for('visit_add', patient_id=patient.id) }}" class="btn btn-primary">
+                                            Προσθήκη πρώτης επίσκεψης
+                                        </a>
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Vaccines Tab -->
+                        <div class="tab-pane fade" id="vaccines" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-shield-plus me-2"></i>Εμβολιασμοί
+                                </h5>
+                                <a href="{{ url_for('vaccine_add', patient_id=patient.id) }}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Νέο Εμβόλιο
+                                </a>
+                            </div>
+                            
+                            {% if vaccines %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Ημερομηνία</th>
+                                                <th>Εμβόλιο</th>
+                                                <th>Δόση</th>
+                                                <th>Χορηγήθηκε από</th>
+                                                <th>Παρενέργειες</th>
+                                                <th>Ενέργειες</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for vaccine in vaccines %}
+                                            <tr>
+                                                <td>{{ vaccine.date_administered.strftime('%d/%m/%Y') }}</td>
+                                                <td>
+                                                    <strong>{{ vaccine.vaccine_name }}</strong>
+                                                    {% if vaccine.vaccine_type %}
+                                                        <br><small class="text-muted">{{ vaccine.vaccine_type }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if vaccine.dose_number %}
+                                                        {{ vaccine.dose_number }}η δόση
+                                                    {% endif %}
+                                                    {% if vaccine.dose_amount %}
+                                                        <br><small class="text-muted">{{ vaccine.dose_amount }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ vaccine.administrator.full_name if vaccine.administrator }}</td>
+                                                <td>
+                                                    {% if vaccine.adverse_reactions %}
+                                                        <span class="text-warning">
+                                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                                            Ναι
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-success">
+                                                            <i class="bi bi-check-circle me-1"></i>
+                                                            Όχι
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-outline-primary btn-sm" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#vaccineModal{{ vaccine.id }}">
+                                                        <i class="bi bi-eye me-1"></i>Προβολή
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-shield-plus text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="text-muted mt-3">Δεν υπάρχουν εμβολιασμοί</h5>
+                                    <p class="text-muted">
+                                        <a href="{{ url_for('vaccine_add', patient_id=patient.id) }}" class="btn btn-primary">
+                                            Προσθήκη πρώτου εμβολίου
+                                        </a>
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Billing Tab -->
+                        <div class="tab-pane fade" id="billing" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-cash-coin me-2"></i>Οικονομικά Στοιχεία
+                                </h5>
+                                <a href="{{ url_for('billing', patient_id=patient.id) }}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-eye me-1"></i>Πλήρη Προβολή
+                                </a>
+                            </div>
+                            
+                            {% if transactions %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Ημερομηνία</th>
+                                                <th>Αριθμός Παραστατικού</th>
+                                                <th>Ποσό</th>
+                                                <th>Κατάσταση</th>
+                                                <th>Μέθοδος Πληρωμής</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for transaction in transactions %}
+                                            <tr>
+                                                <td>{{ transaction.transaction_date.strftime('%d/%m/%Y') }}</td>
+                                                <td><code>{{ transaction.invoice_number }}</code></td>
+                                                <td><strong>€{{ "%.2f"|format(transaction.total_amount) }}</strong></td>
+                                                <td>
+                                                    <span class="badge bg-{{ 'success' if transaction.payment_status == 'paid' else 'warning' if transaction.payment_status == 'pending' else 'danger' }}">
+                                                        {{ 'Πληρωμένο' if transaction.payment_status == 'paid' else 'Εκκρεμές' if transaction.payment_status == 'pending' else 'Ακυρωμένο' }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ transaction.payment_method|title }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-cash-coin text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="text-muted mt-3">Δεν υπάρχουν συναλλαγές</h5>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Certificates Tab -->
+                        <div class="tab-pane fade" id="certificates" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-file-earmark-medical me-2"></i>Ιατρικές Βεβαιώσεις
+                                </h5>
+                                {% if current_user.is_doctor %}
+                                <a href="{{ url_for('certificate_form') }}?patient_id={{ patient.id }}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Νέα Βεβαίωση
+                                </a>
+                                {% endif %}
+                            </div>
+                            
+                            {% if certificates %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Ημερομηνία</th>
+                                                <th>Αριθμός</th>
+                                                <th>Τύπος</th>
+                                                <th>Σκοπός</th>
+                                                <th>Εκδόθηκε από</th>
+                                                <th>Ενέργειες</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for cert in certificates %}
+                                            <tr>
+                                                <td>{{ cert.issue_date.strftime('%d/%m/%Y') }}</td>
+                                                <td><code>{{ cert.certificate_number }}</code></td>
+                                                <td>{{ cert.certificate_type }}</td>
+                                                <td>{{ cert.purpose or '-' }}</td>
+                                                <td>{{ cert.issuer.full_name if cert.issuer }}</td>
+                                                <td>
+                                                    <button class="btn btn-outline-primary btn-sm">
+                                                        <i class="bi bi-download me-1"></i>PDF
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-file-earmark-medical text-muted" style="font-size: 4rem;"></i>
+                                    <h5 class="text-muted mt-3">Δεν υπάρχουν βεβαιώσεις</h5>
+                                    {% if current_user.is_doctor %}
+                                    <p class="text-muted">
+                                        <a href="{{ url_for('certificate_form') }}?patient_id={{ patient.id }}" class="btn btn-primary">
+                                            Δημιουργία βεβαίωσης
+                                        </a>
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.patient-header {
+    background: linear-gradient(135deg, rgba(217, 70, 166, 0.05), rgba(162, 28, 175, 0.05));
+    border: 1px solid rgba(217, 70, 166, 0.1);
+}
+
+.patient-avatar i {
+    font-size: 4rem;
+}
+
+.patient-details {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: none;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    border-color: rgba(217, 70, 166, 0.3);
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .patient-header .row {
+        text-align: center;
+    }
+    
+    .patient-header .btn-group {
+        margin-top: 1rem;
+    }
+    
+    .patient-avatar {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips if any
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Tab switching with URL hash
+    const tabTriggerList = [].slice.call(document.querySelectorAll('#patientTabs button'));
+    tabTriggerList.forEach(function (tabTriggerEl) {
+        tabTriggerEl.addEventListener('shown.bs.tab', function (event) {
+            const tabId = event.target.getAttribute('data-bs-target').substring(1);
+            history.replaceState(null, null, '#' + tabId);
+        });
+    });
+    
+    // Load tab from URL hash
+    const hash = window.location.hash;
+    if (hash) {
+        const tabButton = document.querySelector(`button[data-bs-target="${hash}"]`);
+        if (tabButton) {
+            const tab = new bootstrap.Tab(tabButton);
+            tab.show();
+        }
+    }
+    
+    // Phone number click to call
+    const phoneLinks = document.querySelectorAll('a[href^="tel:"]');
+    phoneLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            // Could add analytics tracking here
+            console.log('Phone call initiated:', this.href);
+        });
+    });
+});
+</script>
+{% endblock %}

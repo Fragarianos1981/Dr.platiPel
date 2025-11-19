@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-user-plus me-2"></i>Προσθήκη Νέου Ασθενή</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Στοιχεία Ασθενή</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">Όνομα *</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Επώνυμο *</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="amka" class="form-label">ΑΜΚΑ *</label>
+                            <input type="text" class="form-control" id="amka" name="amka" maxlength="11" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="birth_date" class="form-label">Ημ. Γέννησης *</label>
+                            <input type="date" class="form-control" id="birth_date" name="birth_date" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="gender" class="form-label">Φύλο *</label>
+                            <select class="form-control" id="gender" name="gender" required>
+                                <option value="">Επιλέξτε...</option>
+                                <option value="M">Αρσενικό</option>
+                                <option value="F">Θηλυκό</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Διεύθυνση</label>
+                        <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Τηλέφωνο</label>
+                            <input type="tel" class="form-control" id="phone" name="phone">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="mobile" class="form-label">Κινητό</label>
+                            <input type="tel" class="form-control" id="mobile" name="mobile">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="father_name" class="form-label">Όνομα Πατρός</label>
+                            <input type="text" class="form-control" id="father_name" name="father_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="mother_name" class="form-label">Όνομα Μητρός</label>
+                            <input type="text" class="form-control" id="mother_name" name="mother_name">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="insurance_number" class="form-label">Αρ. Ασφάλισης</label>
+                            <input type="text" class="form-control" id="insurance_number" name="insurance_number">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Σημειώσεις</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-save me-1"></i>Αποθήκευση
+                        </button>
+                        <a href="{{ url_for('patients_list') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Ακύρωση
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

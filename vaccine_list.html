@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% block title %}Εμβόλια - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-shield-plus"></i>
+                        Διαχείριση Εμβολίων
+                    </h2>
+                    <p class="text-muted mb-0">Καταγραφή και παρακολούθηση εμβολιαστικού προγράμματος</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.vaccine_add') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Νέο Εμβόλιο
+                    </a>
+                    <a href="{{ url_for('main.vaccine_schedule') }}" class="btn btn-info">
+                        <i class="bi bi-calendar-check"></i> Πρόγραμμα
+                    </a>
+                    <button class="btn btn-success" onclick="exportVaccines()">
+                        <i class="bi bi-download"></i> Εξαγωγή
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Σύνολο Εμβολίων</h5>
+                            <h3>{{ stats.total_vaccines or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-shield-plus fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Εμβολιασμένα Παιδιά</h5>
+                            <h3>{{ stats.vaccinated_children or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Εκκρεμή Εμβόλια</h5>
+                            <h3>{{ stats.due_vaccines or 0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-clock fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Κάλυψη</h5>
+                            <h3>{{ "%.1f"|format(stats.coverage_percentage or 0) }}%</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-graph-up fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="vaccineTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="vaccines-tab" data-bs-toggle="tab" data-bs-target="#vaccines" 
+                    type="button" role="tab">
+                <i class="bi bi-shield-check"></i> Χορηγηθέντα Εμβόλια
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="due-tab" data-bs-toggle="tab" data-bs-target="#due" 
+                    type="button" role="tab">
+                <i class="bi bi-clock"></i> Εκκρεμή Εμβόλια
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="coverage-tab" data-bs-toggle="tab" data-bs-target="#coverage" 
+                    type="button" role="tab">
+                <i class="bi bi-pie-chart"></i> Κάλυψη Εμβολιασμών
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="vaccineTabsContent">
+        <!-- Vaccines Tab -->
+        <div class="tab-pane fade show active" id="vaccines" role="tabpanel">
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-funnel"></i> Φίλτρα Αναζήτησης
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row align-items-end">
+                        <input type="hidden" name="tab" value="vaccines">
+                        <div class="col-md-2">
+                            <label for="vaccine_type" class="form-label">Τύπος Εμβολίου</label>
+                            <select class="form-select" id="vaccine_type" name="vaccine_type">
+                                <option value="">Όλοι</option>
+                                <option value="Hexavalent" {{ 'selected' if request.args.get('vaccine_type') == 'Hexavalent' }}>Εξαδύναμο</option>
+                                <option value="Pneumococcal" {{ 'selected' if request.args.get('vaccine_type') == 'Pneumococcal' }}>Πνευμονιόκοκκος</option>
+                                <option value="Rotavirus" {{ 'selected' if request.args.get('vaccine_type') == 'Rotavirus' }}>Ροτάιος</option>
+                                <option value="MMR" {{ 'selected' if request.args.get('vaccine_type') == 'MMR' }}>MMR</option>
+                                <option value="DTPa" {{ 'selected' if request.args.get('vaccine_type') == 'DTPa' }}>DTPa</option>
+                                <option value="Tdap" {{ 'selected' if request.args.get('vaccine_type') == 'Tdap' }}>Tdap</option>
+                                <option value="HPV" {{ 'selected' if request.args.get('vaccine_type') == 'HPV' }}>HPV</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">Από</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" 
+                                   value="{{ request.args.get('date_from', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">Έως</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" 
+                                   value="{{ request.args.get('date_to', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="administrator" class="form-label">Γιατρός</label>
+                            <select class="form-select" id="administrator" name="administrator">
+                                <option value="">Όλοι</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}" {{ 'selected' if request.args.get('administrator') == doctor.id|string }}>
+                                    {{ doctor.full_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">Αναζήτηση</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   placeholder="Ασθενής, εμβόλιο..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Vaccines Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul"></i> 
+                        Χορηγηθέντα Εμβόλια ({{ vaccines|length if vaccines else 0 }})
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if vaccines %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ημερομηνία</th>
+                                    <th>Ασθενής</th>
+                                    <th>Εμβόλιο</th>
+                                    <th>Δόση</th>
+                                    <th>Κατασκευαστής</th>
+                                    <th>Γιατρός</th>
+                                    <th>Επόμενη Δόση</th>
+                                    <th width="100">Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vaccine in vaccines %}
+                                <tr>
+                                    <td>{{ vaccine.date_administered_display }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.patient_card', patient_id=vaccine.patient_id) }}" 
+                                           class="text-decoration-none">
+                                            {{ vaccine.patient.full_name }}
+                                        </a>
+                                        <small class="text-muted d-block">
+                                            {{ vaccine.patient.age_string }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ vaccine.vaccine_name }}</strong>
+                                        {% if vaccine.vaccine_type %}
+                                        <small class="text-muted d-block">{{ vaccine.vaccine_type }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if vaccine.dose_number %}
+                                        <span class="badge bg-primary">{{ vaccine.dose_number }}η Δόση</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ vaccine.manufacturer or '-' }}</td>
+                                    <td>{{ vaccine.administrator.full_name if vaccine.administrator else '-' }}</td>
+                                    <td>
+                                        {% if vaccine.next_dose_due %}
+                                        <span class="text-primary">
+                                            {{ vaccine.next_dose_due.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary btn-sm" 
+                                                    onclick="viewVaccine({{ vaccine.id }})" 
+                                                    title="Προβολή">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            {% if current_user.role in ['doctor', 'admin', 'topuser'] %}
+                                            <button class="btn btn-outline-warning btn-sm" 
+                                                    onclick="editVaccine({{ vaccine.id }})" 
+                                                    title="Επεξεργασία">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% endif %}
+                                            <button class="btn btn-outline-info btn-sm" 
+                                                    onclick="printVaccineCard({{ vaccine.patient_id }})" 
+                                                    title="Εκτύπωση Κάρτας">
+                                                <i class="bi bi-printer"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-shield-plus text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">Δεν βρέθηκαν εμβόλια</h5>
+                        <p class="text-muted">Δοκιμάστε να αλλάξετε τα φίλτρα αναζήτησης</p>
+                        <a href="{{ url_for('main.vaccine_add') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Πρώτο Εμβόλιο
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Due Vaccines Tab -->
+        <div class="tab-pane fade" id="due" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock"></i> 
+                        Εκκρεμή Εμβόλια
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if due_vaccines %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ασθενής</th>
+                                    <th>Ηλικία</th>
+                                    <th>Εμβόλιο</th>
+                                    <th>Δόση</th>
+                                    <th>Οφείλεται στην ηλικία</th>
+                                    <th>Κατάσταση</th>
+                                    <th width="100">Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in due_vaccines %}
+                                <tr class="{{ 'table-danger' if item.is_overdue else 'table-warning' }}">
+                                    <td>
+                                        <a href="{{ url_for('main.patient_card', patient_id=item.patient.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ item.patient.full_name }}
+                                        </a>
+                                        <small class="text-muted d-block">{{ item.patient.amka }}</small>
+                                    </td>
+                                    <td>{{ item.patient.age_string }}</td>
+                                    <td>
+                                        <strong>{{ item.vaccine_info.vaccine_name }}</strong>
+                                        <small class="text-muted d-block">{{ item.vaccine_info.vaccine_type }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ item.vaccine_info.dose_number }}η Δόση</span>
+                                    </td>
+                                    <td>{{ item.vaccine_info.due_at_months }} μηνών</td>
+                                    <td>
+                                        {% if item.is_overdue %}
+                                        <span class="badge bg-danger">ΕΚΠΡΟΘΕΣΜΟ</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">ΕΚΚΡΕΜΕΣ</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('main.vaccine_add', patient_id=item.patient.id) }}" 
+                                               class="btn btn-primary btn-sm" 
+                                               title="Καταχώρηση Εμβολίου">
+                                                <i class="bi bi-shield-plus"></i>
+                                            </a>
+                                            <a href="{{ url_for('main.patient_card', patient_id=item.patient.id) }}" 
+                                               class="btn btn-outline-info btn-sm" 
+                                               title="Προβολή Ασθενή">
+                                                <i class="bi bi-person"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+                        <h5 class="text-success mt-3">Όλα τα εμβόλια είναι ενημερωμένα!</h5>
+                        <p class="text-muted">Δεν υπάρχουν εκκρεμή εμβόλια αυτή τη στιγμή.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Coverage Tab -->
+        <div class="tab-pane fade" id="coverage" role="tabpanel">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-bar-chart"></i> 
+                                Κάλυψη Εμβολιασμών ανά Ηλικιακή Ομάδα
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="coverageChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list-ol"></i> 
+                                Στατιστικά Εμβολιασμών
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if coverage_stats %}
+                            {% for age_group, data in coverage_stats.items() %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="fw-bold">{{ data.display_name }}</small>
+                                    <small>{{ data.fully_vaccinated }}/{{ data.total }}</small>
+                                </div>
+                                <div class="progress mb-1" style="height: 10px;">
+                                    <div class="progress-bar bg-{{ 'success' if data.coverage >= 90 else 'warning' if data.coverage >= 70 else 'danger' }}" 
+                                         role="progressbar" style="width: {{ data.coverage }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.1f"|format(data.coverage) }}% κάλυψη</small>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vaccine Details Modal -->
+<div class="modal fade" id="vaccineModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Στοιχεία Εμβολίου</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="vaccineDetails">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Φόρτωση...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+// View vaccine details
+function viewVaccine(vaccineId) {
+    const modal = new bootstrap.Modal(document.getElementById('vaccineModal'));
+    
+    fetch(`/vaccine/${vaccineId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('vaccineDetails').innerHTML = html;
+            modal.show();
+        })
+        .catch(error => {
+            document.getElementById('vaccineDetails').innerHTML = 
+                '<div class="alert alert-danger">Σφάλμα φόρτωσης στοιχείων</div>';
+            modal.show();
+        });
+}
+
+// Edit vaccine
+function editVaccine(vaccineId) {
+    window.location.href = `/vaccine/${vaccineId}/edit`;
+}
+
+// Print vaccine card
+function printVaccineCard(patientId) {
+    window.open(`/patient/${patientId}/vaccine_card`, '_blank');
+}
+
+// Export vaccines
+function exportVaccines() {
+    window.location.href = '/vaccines/export';
+}
+
+// Coverage Chart
+const coverageCtx = document.getElementById('coverageChart')?.getContext('2d');
+if (coverageCtx) {
+    const coverageChart = new Chart(coverageCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ coverage_chart_data.labels|safe if coverage_chart_data else '[]' }},
+            datasets: [{
+                label: 'Κάλυψη %',
+                data: {{ coverage_chart_data.data|safe if coverage_chart_data else '[]' }},
+                backgroundColor: 'rgba(217, 70, 166, 0.6)',
+                borderColor: '#d946a6',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Tab management
+const urlParams = new URLSearchParams(window.location.search);
+const activeTab = urlParams.get('tab') || 'vaccines';
+
+// Activate the correct tab
+document.querySelector(`#${activeTab}-tab`)?.click();
+
+// Add tab parameter to forms
+document.querySelectorAll('form').forEach(form => {
+    const tabInput = document.createElement('input');
+    tabInput.type = 'hidden';
+    tabInput.name = 'tab';
+    tabInput.value = activeTab;
+    form.appendChild(tabInput);
+});
+</script>
+{% endblock %}

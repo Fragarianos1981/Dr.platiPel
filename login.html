@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-user-md me-2"></i>Dr. PLATI</h4>
+                <p class="mb-0">Σύνδεση στο Σύστημα</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Όνομα Χρήστη</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password1" class="form-label">Κωδικός 1 (Προσωπικός)</label>
+                        <input type="password" class="form-control" id="password1" name="password1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password2" class="form-label">Κωδικός 2 (Κοινός)</label>
+                        <input type="password" class="form-control" id="password2" name="password2" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Σύνδεση</button>
+                </form>
+            </div>
+        </div>
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Test Login: admin / admin123 / kp020716
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

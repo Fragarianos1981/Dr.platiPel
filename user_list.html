@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Διαχείριση Χρηστών - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #f8d7da, #f1aeb5);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="h3 text-white mb-1">
+                                <i class="bi bi-people-fill me-2"></i>Διαχείριση Χρηστών
+                            </h2>
+                            <p class="text-white-50 mb-0">Διαχείριση χρηστών του συστήματος</p>
+                        </div>
+                        {% if current_user.can_manage_users %}
+                        <a href="{{ url_for('main.user_add') }}" class="btn btn-light btn-lg">
+                            <i class="bi bi-person-plus me-1"></i>Νέος Χρήστης
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <div class="input-group input-group-lg">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" id="searchInput" class="form-control border-start-0" 
+                       placeholder="Αναζήτηση χρηστών (όνομα, email, ρόλος)..." autocomplete="off">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select id="roleFilter" class="form-select form-select-lg">
+                <option value="">Όλοι οι ρόλοι</option>
+                <option value="admin">Διαχειριστής</option>
+                <option value="doctor">Γιατρός</option>
+                <option value="secretary">Γραμματεία</option>
+                <option value="topuser">Super Admin</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill text-primary fs-1 mb-2"></i>
+                    <h5 class="card-title mb-1">{{ users|length }}</h5>
+                    <p class="card-text text-muted">Συνολικοί Χρήστες</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-check-fill text-success fs-1 mb-2"></i>
+                    <h5 class="card-title mb-1">{{ users|selectattr('is_active')|list|length }}</h5>
+                    <p class="card-text text-muted">Ενεργοί</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-fill-gear text-warning fs-1 mb-2"></i>
+                    <h5 class="card-title mb-1">{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</h5>
+                    <p class="card-text text-muted">Admins</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-fill-add text-info fs-1 mb-2"></i>
+                    <h5 class="card-title mb-1">{{ users|selectattr('role', 'equalto', 'doctor')|list|length }}</h5>
+                    <p class="card-text text-muted">Γιατροί</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users List -->
+    <div class="row" id="usersList">
+        {% for user in users %}
+        <div class="col-lg-6 mb-3 user-card" data-search="{{ user.search_text() }}" data-role="{{ user.role }}">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle me-3">
+                                <i class="bi bi-person-fill text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">{{ user.full_name }}</h6>
+                                <span class="badge badge-role-{{ user.role }} mb-1">{{ user.role_display }}</span>
+                                {% if not user.is_active %}
+                                <span class="badge bg-secondary ms-1">Απενεργοποιημένος</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if current_user.can_manage_users %}
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('main.user_edit', user_id=user.id) }}">
+                                    <i class="bi bi-pencil me-2"></i>Επεξεργασία</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('main.user_view', user_id=user.id) }}">
+                                    <i class="bi bi-eye me-2"></i>Προβολή</a></li>
+                                {% if user.is_active %}
+                                <li><button class="dropdown-item text-warning" onclick="deactivateUser({{ user.id }})">
+                                    <i class="bi bi-person-x me-2"></i>Απενεργοποίηση</button></li>
+                                {% else %}
+                                <li><button class="dropdown-item text-success" onclick="activateUser({{ user.id }})">
+                                    <i class="bi bi-person-check me-2"></i>Ενεργοποίηση</button></li>
+                                {% endif %}
+                                {% if current_user.role == 'topuser' and user.id != current_user.id %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item text-danger" onclick="deleteUser({{ user.id }})">
+                                    <i class="bi bi-trash me-2"></i>Διαγραφή</button></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <small class="text-muted d-block">Username</small>
+                            <strong>{{ user.username }}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Email</small>
+                            <strong>{{ user.email[:15] }}{% if user.email|length > 15 %}...{% endif %}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Τελευταία Σύνδεση</small>
+                            <strong>{{ user.last_login_display }}</strong>
+                        </div>
+                    </div>
+
+                    {% if user.phone %}
+                    <div class="mt-2 text-center">
+                        <small class="text-muted">
+                            <i class="bi bi-telephone me-1"></i>{{ user.phone }}
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- No Results -->
+    <div id="noResults" class="text-center py-5" style="display: none;">
+        <i class="bi bi-search text-muted" style="font-size: 4rem;"></i>
+        <h4 class="text-muted mt-3">Δεν βρέθηκαν χρήστες</h4>
+        <p class="text-muted">Δοκιμάστε διαφορετικούς όρους αναζήτησης</p>
+    </div>
+</div>
+
+<style>
+.avatar-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #d946a6, #ec4899);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.badge-role-admin { background-color: #dc3545; }
+.badge-role-doctor { background-color: #198754; }
+.badge-role-secretary { background-color: #0d6efd; }
+.badge-role-topuser { background-color: #6f42c1; }
+</style>
+
+<script>
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', function() {
+    filterUsers();
+});
+
+document.getElementById('roleFilter').addEventListener('change', function() {
+    filterUsers();
+});
+
+function filterUsers() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const roleFilter = document.getElementById('roleFilter').value;
+    const userCards = document.querySelectorAll('.user-card');
+    let visibleCount = 0;
+
+    userCards.forEach(card => {
+        const searchText = card.getAttribute('data-search').toLowerCase();
+        const userRole = card.getAttribute('data-role');
+        
+        const matchesSearch = searchText.includes(searchTerm);
+        const matchesRole = !roleFilter || userRole === roleFilter;
+        
+        if (matchesSearch && matchesRole) {
+            card.style.display = '';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+}
+
+// User actions
+function deactivateUser(userId) {
+    if (confirm('Είστε σίγουροι ότι θέλετε να απενεργοποιήσετε αυτόν τον χρήστη;')) {
+        fetch(`/users/${userId}/deactivate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Σφάλμα κατά την απενεργοποίηση του χρήστη');
+            }
+        });
+    }
+}
+
+function activateUser(userId) {
+    fetch(`/users/${userId}/activate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Σφάλμα κατά την ενεργοποίηση του χρήστη');
+        }
+    });
+}
+
+function deleteUser(userId) {
+    if (confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτόν τον χρήστη; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.')) {
+        fetch(`/users/${userId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Σφάλμα κατά τη διαγραφή του χρήστη');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

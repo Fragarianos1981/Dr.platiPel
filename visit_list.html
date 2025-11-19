@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Επισκέψεις - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #e8f4fd, #c3e7fc);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="h3 text-white mb-1">
+                                <i class="bi bi-calendar-heart me-2"></i>Διαχείριση Επισκέψεων
+                            </h2>
+                            <p class="text-white-50 mb-0">Προβολή και διαχείριση επισκέψεων ασθενών</p>
+                        </div>
+                        {% if current_user.can_conduct_visits %}
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('main.visit_add') }}" class="btn btn-light btn-lg">
+                                <i class="bi bi-plus-circle me-1"></i>Νέα Επίσκεψη
+                            </a>
+                            <a href="{{ url_for('main.visit_calendar') }}" class="btn btn-outline-light">
+                                <i class="bi bi-calendar me-1"></i>Ημερολόγιο
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchInput" class="form-control" 
+                       placeholder="Αναζήτηση ασθενών...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select id="statusFilter" class="form-select">
+                <option value="">Όλες οι καταστάσεις</option>
+                <option value="scheduled">Προγραμματισμένη</option>
+                <option value="in_progress">Σε εξέλιξη</option>
+                <option value="completed">Ολοκληρώθηκε</option>
+                <option value="cancelled">Ακυρώθηκε</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="typeFilter" class="form-select">
+                <option value="">Όλοι οι τύποι</option>
+                <option value="consultation">Συμβουλευτική</option>
+                <option value="checkup">Γενικός Έλεγχος</option>
+                <option value="vaccination">Εμβολιασμός</option>
+                <option value="emergency">Επείγον</option>
+                <option value="follow_up">Επανέλεγχος</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="date" id="dateFilter" class="form-control" 
+                   value="{{ today_date }}">
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3>{{ total_visits_today }}</h3>
+                    <p class="mb-0">Επισκέψεις Σήμερα</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3>{{ completed_visits_today }}</h3>
+                    <p class="mb-0">Ολοκληρωμένες</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3>{{ pending_visits_today }}</h3>
+                    <p class="mb-0">Εκκρεμείς</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h3>{{ emergency_visits_today }}</h3>
+                    <p class="mb-0">Επείγουσες</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visits List -->
+    <div class="card border-0 shadow">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ώρα</th>
+                            <th>Ασθενής</th>
+                            <th>Τύπος</th>
+                            <th>Γιατρός</th>
+                            <th>Κατάσταση</th>
+                            <th>Διάγνωση</th>
+                            <th>Ενέργειες</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visitsTable">
+                        {% for visit in visits %}
+                        <tr class="visit-row" data-search="{{ visit.patient.full_name|lower }}" 
+                            data-status="{{ visit.status }}" data-type="{{ visit.visit_type }}">
+                            <td>
+                                <strong>{{ visit.visit_date.strftime('%H:%M') }}</strong>
+                                <br><small class="text-muted">{{ visit.visit_date.strftime('%d/%m/%Y') }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        {% if visit.patient.gender == 'M' %}
+                                        <i class="bi bi-person text-primary"></i>
+                                        {% else %}
+                                        <i class="bi bi-person text-danger"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ visit.patient.full_name }}</strong>
+                                        <br><small class="text-muted">{{ visit.patient.age_string }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge badge-visit-type-{{ visit.visit_type }}">
+                                    {{ visit.visit_type_display }}
+                                </span>
+                                {% if visit.is_emergency %}
+                                <br><span class="badge bg-danger">ΕΠΕΙΓΟΝ</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ visit.doctor.full_name }}</td>
+                            <td>
+                                <span class="badge badge-status-{{ visit.status }}">
+                                    {{ visit.status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if visit.diagnosis %}
+                                <small>{{ visit.diagnosis[:50] }}{% if visit.diagnosis|length > 50 %}...{% endif %}</small>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('main.visit_view', visit_id=visit.id) }}" 
+                                       class="btn btn-outline-primary" title="Προβολή">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if current_user.can_conduct_visits %}
+                                    <a href="{{ url_for('main.visit_edit', visit_id=visit.id) }}" 
+                                       class="btn btn-outline-secondary" title="Επεξεργασία">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if visit.status == 'scheduled' %}
+                                    <button class="btn btn-outline-success" 
+                                            onclick="startVisit({{ visit.id }})" title="Έναρξη">
+                                        <i class="bi bi-play"></i>
+                                    </button>
+                                    {% elif visit.status == 'in_progress' %}
+                                    <button class="btn btn-outline-warning" 
+                                            onclick="completeVisit({{ visit.id }})" title="Ολοκλήρωση">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <!-- Pagination links here -->
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<style>
+.avatar-sm {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge-visit-type-consultation { background-color: #0d6efd; }
+.badge-visit-type-checkup { background-color: #198754; }
+.badge-visit-type-vaccination { background-color: #6f42c1; }
+.badge-visit-type-emergency { background-color: #dc3545; }
+.badge-visit-type-follow_up { background-color: #fd7e14; }
+
+.badge-status-scheduled { background-color: #6c757d; }
+.badge-status-in_progress { background-color: #ffc107; color: #000; }
+.badge-status-completed { background-color: #198754; }
+.badge-status-cancelled { background-color: #dc3545; }
+.badge-status-no_show { background-color: #6f42c1; }
+</style>
+
+<script>
+// Filter functionality
+document.getElementById('searchInput').addEventListener('input', filterVisits);
+document.getElementById('statusFilter').addEventListener('change', filterVisits);
+document.getElementById('typeFilter').addEventListener('change', filterVisits);
+document.getElementById('dateFilter').addEventListener('change', filterVisits);
+
+function filterVisits() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const date = document.getElementById('dateFilter').value;
+    
+    const rows = document.querySelectorAll('.visit-row');
+    
+    rows.forEach(row => {
+        const searchText = row.getAttribute('data-search');
+        const rowStatus = row.getAttribute('data-status');
+        const rowType = row.getAttribute('data-type');
+        
+        const matchesSearch = !search || searchText.includes(search);
+        const matchesStatus = !status || rowStatus === status;
+        const matchesType = !type || rowType === type;
+        
+        if (matchesSearch && matchesStatus && matchesType) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Visit actions
+function startVisit(visitId) {
+    fetch(`/visits/${visitId}/start`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
+        }
+    });
+}
+
+function completeVisit(visitId) {
+    window.location.href = `/visits/${visitId}/edit`;
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    if (!document.hidden) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}

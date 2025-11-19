@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+Dr. PLATI - Import Fix Script
+Αυτόματη διόρθωση import references από Certificate σε Certificate
+"""
+
+import os
+import sys
+from pathlib import Path
+
+def fix_file(file_path):
+    """Fix imports and references in a single file"""
+    if not os.path.exists(file_path):
+        print(f"⚠️ File not found: {file_path}")
+        return False
+    
+    try:
+        # Read file content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Store original content for comparison
+        original_content = content
+        
+        # Apply fixes
+        content = content.replace('Certificate', 'Certificate')
+        
+        # Additional full_name fixes for Python files
+        if file_path.endswith('.py'):
+            # Fix full_name assignments in User creation
+            content = content.replace(
+                "first_name='Διαχειριστής', last_name='Συστήματος'",
+                "first_name='Διαχειριστής', last_name='Συστήματος'"
+            )
+            content = content.replace(
+                'first_name="Διαχειριστής", last_name="Συστήματος"',
+                'first_name="Διαχειριστής", last_name="Συστήματος"'
+            )
+            
+            # Fix password hash assignments
+            content = content.replace(
+                '# password1_hash=generate_password_hash(  # Use set_password() instead',
+                '# # password1_hash=generate_password_hash(  # Use set_password() instead  # Use set_password() instead'
+            )
+            content = content.replace(
+                "# password2='kp020716'  # Use set_password2() instead",
+                "# # password2='kp020716'  # Use set_password2() instead  # Use set_password2() instead"
+            )
+        
+        # Check if changes were made
+        if content == original_content:
+            print(f"✅ {file_path} - No changes needed")
+            return True
+        
+        # Backup original file
+        backup_path = file_path + '.backup'
+        with open(backup_path, 'w', encoding='utf-8') as f:
+            f.write(original_content)
+        
+        # Write fixed content
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"🔧 {file_path} - Fixed! (backup: {backup_path})")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error fixing {file_path}: {e}")
+        return False
+
+def find_python_files(directory):
+    """Find all Python files in directory"""
+    python_files = []
+    for root, dirs, files in os.walk(directory):
+        # Skip venv, __pycache__, .git directories
+        dirs[:] = [d for d in dirs if not d.startswith(('.git', '__pycache__', 'venv', '.venv'))]
+        
+        for file in files:
+            if file.endswith('.py'):
+                python_files.append(os.path.join(root, file))
+    
+    return python_files
+
+def main():
+    """Main execution"""
+    print("🔧 Dr. PLATI Import Fix Script")
+    print("=" * 50)
+    
+    # Get current directory
+    current_dir = os.getcwd()
+    print(f"📁 Working directory: {current_dir}")
+    
+    # Find Python files
+    python_files = find_python_files(current_dir)
+    
+    if not python_files:
+        print("⚠️ No Python files found in current directory")
+        return
+    
+    print(f"📋 Found {len(python_files)} Python files:")
+    for file in python_files:
+        print(f"   - {os.path.relpath(file, current_dir)}")
+    
+    print("\n🚀 Starting fixes...")
+    
+    # Apply fixes to each file
+    success_count = 0
+    for file_path in python_files:
+        if fix_file(file_path):
+            success_count += 1
+    
+    print(f"\n✅ Fixed {success_count}/{len(python_files)} files successfully!")
+    
+    # Special instructions
+    print("\n📋 Next Steps:")
+    print("   1. Check that all files are working: python -m py_compile <filename>")
+    print("   2. Test the application: python run.py")
+    print("   3. If errors persist, check .backup files to restore")
+    
+    # Check for specific common files
+    important_files = ['routes.py', 'run.py', 'models.py', 'app.py', 'init_db.py']
+    print(f"\n🔍 Important files status:")
+    
+    for file in important_files:
+        if os.path.exists(file):
+            print(f"   ✅ {file} - exists")
+        else:
+            print(f"   ⚠️ {file} - not found")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n👋 Import fix cancelled")
+    except Exception as e:
+        print(f"\n❌ Script error: {e}")
+        sys.exit(1)

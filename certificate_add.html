@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Έκδοση Βεβαίωσης - Dr. PLATI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary">
+                        <i class="bi bi-file-text"></i>
+                        Έκδοση Ιατρικής Βεβαίωσης
+                    </h2>
+                    {% if patient %}
+                    <p class="text-muted mb-0">
+                        Ασθενής: <strong>{{ patient.full_name }}</strong> ({{ patient.amka }})
+                    </p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.certificate_list') }}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Πίσω
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-text"></i>
+                        Στοιχεία Βεβαίωσης
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="certificateForm" method="POST" action="{{ url_for('main.certificate_add') }}">
+                        {{ csrf_token() }}
+                        
+                        <!-- Patient Selection (if not pre-selected) -->
+                        {% if not patient %}
+                        <div class="mb-3">
+                            <label for="patient_id" class="form-label required">Ασθενής</label>
+                            <select class="form-select" id="patient_id" name="patient_id" required>
+                                <option value="">Επιλέξτε ασθενή...</option>
+                                {% for p in patients %}
+                                <option value="{{ p.id }}">{{ p.full_name }} ({{ p.amka }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="patient_id" value="{{ patient.id }}">
+                        {% endif %}
+
+                        <!-- Visit Selection (optional) -->
+                        {% if visit %}
+                        <input type="hidden" name="visit_id" value="{{ visit.id }}">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Η βεβαίωση θα συνδεθεί με την επίσκεψη της {{ visit.visit_date_display }}
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Basic Certificate Info -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="certificate_type" class="form-label required">Τύπος Βεβαίωσης</label>
+                                    <select class="form-select" id="certificate_type" name="certificate_type" required>
+                                        <option value="">Επιλέξτε τύπο...</option>
+                                        <option value="health">Βεβαίωση Υγείας</option>
+                                        <option value="vaccination">Βεβαίωση Εμβολιασμών</option>
+                                        <option value="absence">Βεβαίωση Απουσίας</option>
+                                        <option value="sports">Βεβαίωση Αθλητισμού</option>
+                                        <option value="camp">Βεβαίωση Κατασκήνωσης</option>
+                                        <option value="travel">Βεβαίωση Ταξιδιού</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="purpose" class="form-label">Σκοπός Βεβαίωσης</label>
+                                    <input type="text" class="form-control" id="purpose" name="purpose" 
+                                           placeholder="π.χ. Εγγραφή σε σχολείο">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="issue_date" class="form-label">Ημερομηνία Έκδοσης</label>
+                                    <input type="date" class="form-control" id="issue_date" name="issue_date" 
+                                           value="{{ current_date }}" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="valid_until" class="form-label">Ισχύει Έως</label>
+                                    <input type="date" class="form-control" id="valid_until" name="valid_until">
+                                    <div class="form-text">Αφήστε κενό για απεριόριστη ισχύ</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <!-- Type-specific fields (shown based on selection) -->
+                                
+                                <!-- Absence Certificate Fields -->
+                                <div id="absence_fields" class="d-none">
+                                    <h6 class="text-primary">Στοιχεία Απουσίας</h6>
+                                    <div class="mb-3">
+                                        <label for="absence_reason" class="form-label">Λόγος Απουσίας</label>
+                                        <input type="text" class="form-control" id="absence_reason" name="absence_reason" 
+                                               placeholder="π.χ. Ιγμορίτιδα">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="absence_days" class="form-label">Ημέρες Απουσίας</label>
+                                                <input type="number" class="form-control" id="absence_days" name="absence_days" 
+                                                       min="1" max="30" value="3">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="mb-3">
+                                                <label for="absence_start" class="form-label">Από</label>
+                                                <input type="date" class="form-control" id="absence_start" name="absence_start" 
+                                                       value="{{ current_date }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Camp Certificate Fields -->
+                                <div id="camp_fields" class="d-none">
+                                    <h6 class="text-primary">Στοιχεία Κατασκήνωσης</h6>
+                                    <div class="mb-3">
+                                        <label for="camp_name" class="form-label">Όνομα Κατασκήνωσης</label>
+                                        <input type="text" class="form-control" id="camp_name" name="camp_name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="camp_period" class="form-label">Περίοδος</label>
+                                        <input type="text" class="form-control" id="camp_period" name="camp_period" 
+                                               placeholder="π.χ. 1-15 Ιουλίου 2024">
+                                    </div>
+                                </div>
+
+                                <!-- Travel Certificate Fields -->
+                                <div id="travel_fields" class="d-none">
+                                    <h6 class="text-primary">Στοιχεία Ταξιδιού</h6>
+                                    <div class="mb-3">
+                                        <label for="destination" class="form-label">Προορισμός</label>
+                                        <input type="text" class="form-control" id="destination" name="destination">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="travel_period" class="form-label">Περίοδος Ταξιδιού</label>
+                                        <input type="text" class="form-control" id="travel_period" name="travel_period" 
+                                               placeholder="π.χ. 20-30 Ιουνίου 2024">
+                                    </div>
+                                </div>
+
+                                <!-- Sports Certificate Fields -->
+                                <div id="sports_fields" class="d-none">
+                                    <h6 class="text-primary">Στοιχεία Αθλητισμού</h6>
+                                    <div class="mb-3">
+                                        <label for="sports_activity" class="form-label">Αθλητική Δραστηριότητα</label>
+                                        <input type="text" class="form-control" id="sports_activity" name="sports_activity" 
+                                               placeholder="π.χ. Ποδόσφαιρο">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Certificate Content -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="content" class="form-label">Κείμενο Βεβαίωσης</label>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary" onclick="loadTemplate()" id="loadTemplateBtn" disabled>
+                                        <i class="bi bi-file-earmark"></i> Φόρτωση Προτύπου
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success" onclick="previewCertificate()">
+                                        <i class="bi bi-eye"></i> Προεπισκόπηση
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea class="form-control" id="content" name="content" rows="12" 
+                                      placeholder="Το κείμενο της βεβαίωσης θα δημιουργηθεί αυτόματα βάσει του τύπου..." required></textarea>
+                            <div class="form-text">
+                                Το κείμενο θα δημιουργηθεί αυτόματα βάσει του επιλεγμένου τύπου. Μπορείτε να το επεξεργαστείτε.
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Σημειώσεις</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Επιπλέον σημειώσεις (δεν θα εκτυπωθούν)"></textarea>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('main.patient_card', patient_id=patient.id) if patient else url_for('main.certificate_list') }}" 
+                                       class="btn btn-secondary">
+                                        <i class="bi bi-x-circle"></i> Ακύρωση
+                                    </a>
+                                    <button type="button" class="btn btn-info" onclick="previewCertificate()">
+                                        <i class="bi bi-eye"></i> Προεπισκόπηση
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-file-check"></i> Έκδοση Βεβαίωσης
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-eye"></i> Προεπισκόπηση Βεβαίωσης
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent" style="background: white; padding: 2rem; border: 1px solid #ddd; min-height: 400px;">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Κλείσιμο</button>
+                <button type="button" class="btn btn-primary" onclick="printPreview()">
+                    <i class="bi bi-printer"></i> Εκτύπωση
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Certificate type change handler
+document.getElementById('certificate_type').addEventListener('change', function() {
+    const selectedType = this.value;
+    
+    // Hide all type-specific fields
+    document.querySelectorAll('[id$="_fields"]').forEach(field => {
+        field.classList.add('d-none');
+    });
+    
+    // Show relevant fields
+    if (selectedType) {
+        const fieldsDiv = document.getElementById(selectedType + '_fields');
+        if (fieldsDiv) {
+            fieldsDiv.classList.remove('d-none');
+        }
+        
+        // Enable template loading
+        document.getElementById('loadTemplateBtn').disabled = false;
+        
+        // Auto-set validity period based on type
+        setValidityPeriod(selectedType);
+        
+        // Load template if content is empty
+        if (!document.getElementById('content').value.trim()) {
+            loadTemplate();
+        }
+    } else {
+        document.getElementById('loadTemplateBtn').disabled = true;
+        document.getElementById('content').value = '';
+    }
+});
+
+// Set validity period based on certificate type
+function setValidityPeriod(type) {
+    const validUntilInput = document.getElementById('valid_until');
+    const issueDate = new Date(document.getElementById('issue_date').value);
+    
+    let validUntil = new Date(issueDate);
+    
+    switch (type) {
+        case 'sports':
+            validUntil.setFullYear(validUntil.getFullYear() + 1); // 1 year
+            break;
+        case 'travel':
+            validUntil.setMonth(validUntil.getMonth() + 6); // 6 months
+            break;
+        case 'camp':
+            validUntil.setMonth(validUntil.getMonth() + 3); // 3 months
+            break;
+        default:
+            validUntilInput.value = ''; // No expiry for health, vaccination, absence
+            return;
+    }
+    
+    validUntilInput.value = validUntil.toISOString().split('T')[0];
+}
+
+// Load certificate template
+function loadTemplate() {
+    const certificateType = document.getElementById('certificate_type').value;
+    const patientId = {{ patient.id if patient else 'null' }};
+    
+    if (!certificateType) {
+        alert('Παρακαλώ επιλέξτε τύπο βεβαίωσης');
+        return;
+    }
+    
+    const formData = new FormData(document.getElementById('certificateForm'));
+    
+    fetch('/certificate/template', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('content').value = data.content;
+            if (data.title) {
+                // Update form title if needed
+            }
+        } else {
+            alert('Σφάλμα φόρτωσης προτύπου: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Σφάλμα δικτύου');
+    });
+}
+
+// Preview certificate
+function previewCertificate() {
+    const certificateType = document.getElementById('certificate_type').value;
+    const content = document.getElementById('content').value;
+    
+    if (!certificateType || !content) {
+        alert('Παρακαλώ επιλέξτε τύπο βεβαίωσης και συμπληρώστε το κείμενο');
+        return;
+    }
+    
+    const formData = new FormData(document.getElementById('certificateForm'));
+    
+    fetch('/certificate/preview', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        document.getElementById('previewContent').innerHTML = html;
+        const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Σφάλμα προεπισκόπησης');
+    });
+}
+
+// Print preview
+function printPreview() {
+    const content = document.getElementById('previewContent').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Βεβαίωση - Dr. PLATI</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 2cm; }
+                h1 { text-align: center; color: #d946a6; }
+                .header { text-align: center; margin-bottom: 2cm; }
+                .content { line-height: 1.6; }
+                .footer { margin-top: 2cm; text-align: right; }
+            </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Auto-calculate absence end date
+document.getElementById('absence_days').addEventListener('change', function() {
+    const startDate = new Date(document.getElementById('absence_start').value);
+    if (startDate && this.value) {
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + parseInt(this.value) - 1);
+        
+        // Update the content template variables if needed
+        updateAbsenceTemplate();
+    }
+});
+
+document.getElementById('absence_start').addEventListener('change', function() {
+    const days = document.getElementById('absence_days').value;
+    if (this.value && days) {
+        updateAbsenceTemplate();
+    }
+});
+
+function updateAbsenceTemplate() {
+    // Reload template with updated dates if absence type is selected
+    if (document.getElementById('certificate_type').value === 'absence') {
+        loadTemplate();
+    }
+}
+
+// Form validation
+document.getElementById('certificateForm').addEventListener('submit', function(e) {
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+    
+    if (!isValid) {
+        e.preventDefault();
+        alert('Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία.');
+    }
+});
+
+// Initialize form
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date as default
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('issue_date').value = today;
+    document.getElementById('absence_start').value = today;
+});
+</script>
+{% endblock %}
